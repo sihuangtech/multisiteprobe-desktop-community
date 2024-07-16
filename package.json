@@ -1,0 +1,21 @@
+{
+  "name": "multisitelatencytool",
+  "version": "1.0.0",
+  "description": "一个测量多个网站延迟并获取IP地理位置信息的工具",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://gitee.com/Snake-Konginchrist/MultiSiteLatencyTool"
+  },
+  "author": "Snake Konginchrist",
+  "license": "MIT",
+  "devDependencies": {
+    "axios": "^1.7.2",
+    "ping": "^0.4.4",
+    "electron": "^31.2.1"
+  }
+}
