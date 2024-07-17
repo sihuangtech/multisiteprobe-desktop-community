@@ -1,6 +1,6 @@
 # MultiSiteLatencyTool
 
-To switch to the English version of the README.md, please click [here](README_en).
+To switch to the English version of the README.md, please click [here](README_en.md).
 
 MultiSiteLatencyTool 是一个开源项目，旨在提供一个简单易用的界面，让用户能够同时测量多个指定网站的延迟，并显示这些网站的 IP 地址及其所在地域信息。用户不仅可以通过该工具快速了解各个网站的访问速度，还能方便地编辑和管理需要测量的网站列表。此外，该工具还集成了 IP2Location.io 的 IP 地理定位服务，帮助用户直观地了解网站服务器的地理分布。通过并发测量技术，MultiSiteLatencyTool 能够高效地处理多个网站的延迟测量任务，为用户提供全面的网络性能分析报告。
 
