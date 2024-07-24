@@ -1,8 +1,8 @@
-# MultiSiteLatencyTool
+# MultiSite Latency Tool
 
 如果你想查看简体中文版本的README.md，请点击[这里](README.md)。
 
-MultiSiteLatencyTool is an open-source project designed to provide a simple and user-friendly interface for measuring latency across multiple specified websites. It displays the IP addresses of these websites along with their geographic location information. Users can quickly assess the access speed of each website and easily manage the list of websites to measure. Additionally, the tool integrates IP2Location.io for IP geolocation services, offering users intuitive insights into the geographical distribution of website servers. Using concurrent measurement techniques, MultiSiteLatencyTool efficiently handles latency measurement tasks for multiple websites, providing comprehensive network performance analysis reports.
+MultiSite Latency Tool is an open-source project designed to provide a simple and user-friendly interface for measuring latency across multiple specified websites. It displays the IP addresses of these websites along with their geographic location information. Users can quickly assess the access speed of each website and easily manage the list of websites to measure. Additionally, the tool integrates IP2Location.io for IP geolocation services, offering users intuitive insights into the geographical distribution of website servers. Using concurrent measurement techniques, MultiSiteLatencyTool efficiently handles latency measurement tasks for multiple websites, providing comprehensive network performance analysis reports.
 
 ## Features
 
@@ -117,4 +117,4 @@ npm start
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
