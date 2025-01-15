@@ -16,20 +16,25 @@
 <!--along with this program.  If not, see <https://www.gnu.org/licenses/>.-->
 
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>MultiSiteLatencyTool</title>
-    <!-- 引入样式文件（可选） -->
-    <link rel="stylesheet" href="assets/styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多站点延迟测试工具</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        #app {
+            height: 100%;
+        }
+    </style>
 </head>
 <body>
-<h1>MultiSiteLatencyTool</h1>
-    <p>欢迎使用多站点延迟测量工具！</p>
-    <textarea id="urls" rows="10" cols="50" placeholder="请输入每行一个URL"></textarea>
-    <button id="measure-button">测量延迟</button>
-    <div id="results"></div>
-    <!-- 引入渲染进程的JavaScript文件（可选） -->
-    <script src="renderer.js"></script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>

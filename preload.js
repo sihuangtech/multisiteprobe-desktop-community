@@ -21,5 +21,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
-    measureLatency: (urls) => ipcRenderer.invoke('measure-latency', urls)
+  ipcRenderer: {
+    invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args)
+  }
 });
