@@ -1,3 +1,5 @@
+'use strict';
+
 /*
   MultiSite Latency Tool
 
@@ -18,19 +20,18 @@
 */
 
 // 引入Electron模块
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
-const Store = require('electron-store');
+const Store = require('./electron-store-wrapper');
 const dns = require('dns');
 const util = require('util');
 const { exec } = require('child_process');
+const https = require('https');
+const http = require('http');
 const execPromise = util.promisify(exec);
 
 // 将dns.resolve4转换为Promise形式
 const dnsResolve4 = util.promisify(dns.resolve4);
-
-// 初始化存储
-Store.initRenderer();
 
 // 创建窗口的函数
 function createWindow() {
@@ -40,9 +41,10 @@ function createWindow() {
         width: 1200,
         height: 800,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            enableRemoteModule: true
+            nodeIntegration: false,
+            contextIsolation: true,
+            enableRemoteModule: false,
+            preload: path.join(__dirname, 'preload.js')
         }
     });
 
@@ -78,6 +80,21 @@ function createWindow() {
     // 监听加载错误事件
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
         console.error('Failed to load:', errorCode, errorDescription)
+    })
+
+    // 阻止新窗口在Electron内部打开，强制使用默认浏览器
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        console.log('Attempting to open URL:', url)
+        // 使用默认浏览器打开外部链接
+        shell.openExternal(url)
+        return { action: 'deny' }
+    })
+
+    // 兼容旧版本的new-window事件
+    mainWindow.webContents.on('new-window', (event, url) => {
+        console.log('New window requested for URL:', url)
+        event.preventDefault()
+        shell.openExternal(url)
     })
 }
 
@@ -120,6 +137,20 @@ ipcMain.handle('resolve-dns', async (event, domain) => {
     } catch (error) {
         console.error('DNS解析失败:', error)
         return domain // 如果解析失败，返回原始输入
+    }
+})
+
+// 添加打开外部链接的IPC处理程序
+ipcMain.handle('open-external', async (event, url) => {
+    try {
+        console.log('IPC open-external called with URL:', url)
+        console.log('Using shell.openExternal to open in default browser')
+        await shell.openExternal(url)
+        console.log('shell.openExternal completed successfully')
+        return { success: true }
+    } catch (error) {
+        console.error('打开外部链接失败:', error)
+        return { success: false, error: error.message }
     }
 })
 
@@ -200,3 +231,350 @@ ipcMain.handle('ping-test', async (event, options) => {
         throw new Error(`Ping测试失败: ${error.message}`)
     }
 })
+
+// 添加IP2Location查询处理程序
+ipcMain.handle('ip2location-lookup', async (event, ip, userSettings = null) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // 获取用户设置，如果没有传入则使用默认设置
+            const settings = userSettings || {
+                ipLookupService: 'auto',
+                ip2locationApiKey: '',
+                ipinfoToken: '',
+                ipLookupTimeout: 8
+            }
+
+            let targetIp = ip
+            
+            // 如果传入的是'current'，则先获取当前IP
+            if (ip === 'current') {
+                console.log('检测到查询当前IP请求，正在获取当前IP...')
+                
+                // 定义所有可用的IP地理位置服务，它们都能返回当前IP
+                const currentIpServices = {
+                    'ip-api': {
+                        name: 'ip-api',
+                        url: `http://ip-api.com/json/?fields=status,message,country,regionName,city,isp,query`,
+                        parseResponse: (data) => {
+                            const result = JSON.parse(data)
+                            if (result.status === 'success') {
+                                return {
+                                    ip: result.query,
+                                    country_name: result.country,
+                                    region_name: result.regionName,
+                                    city_name: result.city,
+                                    isp: result.isp
+                                }
+                            } else {
+                                throw new Error(result.message || '查询失败')
+                            }
+                        }
+                    },
+                    'ipapi': {
+                        name: 'ipapi',
+                        url: `https://ipapi.co/json/`,
+                        parseResponse: (data) => {
+                            const result = JSON.parse(data)
+                            if (result.error) {
+                                throw new Error(result.reason || '查询失败')
+                            }
+                            return {
+                                ip: result.ip,
+                                country_name: result.country_name,
+                                region_name: result.region,
+                                city_name: result.city,
+                                isp: result.org
+                            }
+                        }
+                    },
+                    'ip2location': {
+                        name: 'ip2location',
+                        url: `https://api.ip2location.io/v2/ip?key=${settings.ip2locationApiKey}&format=json`,
+                        parseResponse: (data) => {
+                            const result = JSON.parse(data)
+                            if (result.error) {
+                                throw new Error(result.error.error_message || '查询失败')
+                            }
+                            return {
+                                ip: result.ip,
+                                country_name: result.country_name,
+                                region_name: result.region_name,
+                                city_name: result.city_name,
+                                isp: result.isp
+                            }
+                        },
+                        requiresKey: true
+                    },
+                    'ipinfo': {
+                        name: 'ipinfo',
+                        url: settings.ipinfoToken 
+                            ? `https://ipinfo.io/json?token=${settings.ipinfoToken}`
+                            : `https://ipinfo.io/json`,
+                        parseResponse: (data) => {
+                            const result = JSON.parse(data)
+                            if (result.error) {
+                                throw new Error(result.error.message || '查询失败')
+                            }
+                            return {
+                                ip: result.ip,
+                                country_name: result.country,
+                                region_name: result.region,
+                                city_name: result.city,
+                                isp: result.org
+                            }
+                        }
+                    }
+                }
+
+                // 根据用户设置选择服务
+                let servicesToTry = []
+                
+                if (settings.ipLookupService === 'auto') {
+                    // 自动模式：按优先级尝试所有可用服务
+                    servicesToTry = ['ip-api', 'ipapi']
+                    
+                    // 如果有API密钥，添加付费服务
+                    if (settings.ip2locationApiKey) {
+                        servicesToTry.unshift('ip2location') // 优先使用付费服务
+                    }
+                    if (settings.ipinfoToken) {
+                        servicesToTry.push('ipinfo')
+                    } else {
+                        servicesToTry.push('ipinfo') // 免费版本
+                    }
+                } else {
+                    // 指定服务模式
+                    const selectedService = currentIpServices[settings.ipLookupService]
+                    if (!selectedService) {
+                        reject(new Error('不支持的IP查询服务'))
+                        return
+                    }
+                    
+                    // 检查是否需要API密钥
+                    if (selectedService.requiresKey && !settings.ip2locationApiKey) {
+                        reject(new Error('IP2Location服务需要API密钥'))
+                        return
+                    }
+                    
+                    servicesToTry = [settings.ipLookupService]
+                }
+
+                // 尝试查询当前IP和地理位置
+                for (const serviceName of servicesToTry) {
+                    const service = currentIpServices[serviceName]
+                    if (!service) continue
+
+                    try {
+                        console.log(`尝试使用 ${service.name} 查询当前IP和地理位置...`)
+                        const result = await queryIpLocation(service, '', settings.ipLookupTimeout)
+                        console.log(`成功从 ${service.name} 获取到当前IP信息:`, result)
+                        
+                        // 直接返回完整结果，包含IP和地理位置信息
+                        resolve({
+                            success: true,
+                            data: {
+                                ip: result.ip,
+                                country: result.country_name,
+                                region: result.region_name,
+                                city: result.city_name,
+                                isp: result.isp
+                            },
+                            service: service.name
+                        })
+                        return
+                    } catch (error) {
+                        console.error(`${service.name} 查询失败:`, error.message)
+                        continue
+                    }
+                }
+                
+                reject(new Error('所有IP查询服务都不可用'))
+                return
+            }
+
+            // 定义所有可用的IP地理位置服务（用于查询指定IP）
+            const allServices = {
+                'ip-api': {
+                    name: 'ip-api',
+                    url: `http://ip-api.com/json/${targetIp}?fields=status,message,country,regionName,city,isp,query`,
+                    parseResponse: (data) => {
+                        const result = JSON.parse(data)
+                        if (result.status === 'success') {
+                            return {
+                                country_name: result.country,
+                                region_name: result.regionName,
+                                city_name: result.city,
+                                isp: result.isp
+                            }
+                        } else {
+                            throw new Error(result.message || '查询失败')
+                        }
+                    }
+                },
+                'ipapi': {
+                    name: 'ipapi',
+                    url: `https://ipapi.co/${targetIp}/json/`,
+                    parseResponse: (data) => {
+                        const result = JSON.parse(data)
+                        if (result.error) {
+                            throw new Error(result.reason || '查询失败')
+                        }
+                        return {
+                            country_name: result.country_name,
+                            region_name: result.region,
+                            city_name: result.city,
+                            isp: result.org
+                        }
+                    }
+                },
+                'ip2location': {
+                    name: 'ip2location',
+                    url: `https://api.ip2location.io/v2/ip?ip=${targetIp}&key=${settings.ip2locationApiKey}&format=json`,
+                    parseResponse: (data) => {
+                        const result = JSON.parse(data)
+                        if (result.error) {
+                            throw new Error(result.error.error_message || '查询失败')
+                        }
+                        return {
+                            country_name: result.country_name,
+                            region_name: result.region_name,
+                            city_name: result.city_name,
+                            isp: result.isp
+                        }
+                    },
+                    requiresKey: true
+                },
+                'ipinfo': {
+                    name: 'ipinfo',
+                    url: settings.ipinfoToken 
+                        ? `https://ipinfo.io/${targetIp}?token=${settings.ipinfoToken}`
+                        : `https://ipinfo.io/${targetIp}/json`,
+                    parseResponse: (data) => {
+                        const result = JSON.parse(data)
+                        if (result.error) {
+                            throw new Error(result.error.message || '查询失败')
+                        }
+                        return {
+                            country_name: result.country,
+                            region_name: result.region,
+                            city_name: result.city,
+                            isp: result.org
+                        }
+                    }
+                }
+            }
+
+            // 根据用户设置选择服务
+            let servicesToTry = []
+            
+            if (settings.ipLookupService === 'auto') {
+                // 自动模式：按优先级尝试所有可用服务
+                servicesToTry = ['ip-api', 'ipapi']
+                
+                // 如果有API密钥，添加付费服务
+                if (settings.ip2locationApiKey) {
+                    servicesToTry.unshift('ip2location') // 优先使用付费服务
+                }
+                if (settings.ipinfoToken) {
+                    servicesToTry.push('ipinfo')
+                } else {
+                    servicesToTry.push('ipinfo') // 免费版本
+                }
+            } else {
+                // 指定服务模式
+                const selectedService = allServices[settings.ipLookupService]
+                if (!selectedService) {
+                    reject(new Error('不支持的IP查询服务'))
+                    return
+                }
+                
+                // 检查是否需要API密钥
+                if (selectedService.requiresKey && !settings.ip2locationApiKey) {
+                    reject(new Error('IP2Location服务需要API密钥'))
+                    return
+                }
+                
+                servicesToTry = [settings.ipLookupService]
+            }
+
+            // 尝试查询服务
+            for (const serviceName of servicesToTry) {
+                const service = allServices[serviceName]
+                if (!service) continue
+
+                try {
+                    console.log(`尝试使用 ${service.name} 查询IP地理位置...`)
+                    const result = await queryIpLocation(service, targetIp, settings.ipLookupTimeout)
+                    console.log(`成功从 ${service.name} 获取到地理位置信息:`, result)
+                    
+                    resolve({
+                        success: true,
+                        data: {
+                            ip: targetIp,
+                            country: result.country_name,
+                            region: result.region_name,
+                            city: result.city_name,
+                            isp: result.isp
+                        },
+                        service: service.name
+                    })
+                    return
+                } catch (error) {
+                    console.error(`${service.name} 查询失败:`, error.message)
+                    continue
+                }
+            }
+            
+            reject(new Error('所有IP地理位置服务都不可用'))
+        } catch (error) {
+            reject(error)
+        }
+    })
+})
+
+// 辅助函数：查询IP地理位置
+function queryIpLocation(service, ip, timeout = 8000) {
+    return new Promise((resolve, reject) => {
+        const url = new URL(service.url)
+        const options = {
+            hostname: url.hostname,
+            port: url.port || (url.protocol === 'https:' ? 443 : 80),
+            path: url.pathname + url.search,
+            method: 'GET',
+            timeout: timeout * 1000,
+            headers: {
+                'User-Agent': 'MultiSiteLatencyTool/1.0'
+            }
+        }
+
+        const protocol = url.protocol === 'https:' ? https : http
+        
+        const req = protocol.request(options, (res) => {
+            let data = ''
+            
+            res.on('data', (chunk) => {
+                data += chunk
+            })
+            
+            res.on('end', () => {
+                try {
+                    const result = service.parseResponse(data)
+                    resolve(result)
+                } catch (error) {
+                    reject(new Error('解析响应失败: ' + error.message))
+                }
+            })
+        })
+
+        req.on('error', (error) => {
+            reject(new Error('请求失败: ' + error.message))
+        })
+
+        req.on('timeout', () => {
+            req.destroy()
+            reject(new Error('请求超时'))
+        })
+
+        req.end()
+    })
+}

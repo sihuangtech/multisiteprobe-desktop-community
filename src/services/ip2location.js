@@ -1,9 +1,3 @@
-import axios from 'axios'
-
-// IP2Location API配置
-const API_KEY = process.env.IP2LOCATION_API_KEY
-const BASE_URL = 'https://api.ip2location.io'
-
 /**
  * IP2Location API服务类
  */
@@ -15,14 +9,9 @@ class IP2LocationService {
    */
   async lookup(ip) {
     try {
-      const response = await axios.get(`${BASE_URL}/v2/ip`, {
-        params: {
-          ip,
-          key: API_KEY,
-          format: 'json'
-        }
-      })
-      return response.data
+      // 通过IPC调用主进程进行IP地理位置查询
+      const result = await window.electron.ipcRenderer.invoke('ip2location-lookup', ip)
+      return result
     } catch (error) {
       console.error('IP查询失败:', error)
       throw error
@@ -36,12 +25,25 @@ class IP2LocationService {
    */
   async batchLookup(ips) {
     try {
-      const response = await axios.post(`${BASE_URL}/v2/bulk`, {
-        ips,
-        key: API_KEY,
-        format: 'json'
-      })
-      return response.data
+      // 批量查询：逐个调用单个查询
+      const results = []
+      for (const ip of ips) {
+        try {
+          const result = await this.lookup(ip)
+          results.push({ ip, ...result })
+        } catch (error) {
+          console.error(`查询IP ${ip} 失败:`, error)
+          results.push({ 
+            ip, 
+            error: error.message,
+            country_name: '-',
+            region_name: '-',
+            city_name: '-',
+            isp: '-'
+          })
+        }
+      }
+      return results
     } catch (error) {
       console.error('批量IP查询失败:', error)
       throw error

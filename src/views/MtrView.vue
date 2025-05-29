@@ -1,133 +1,137 @@
 <template>
-  <div class="mtr">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <h3>MTR测试</h3>
-          <el-button-group>
-            <el-button type="primary" @click="startTest" :loading="loading">
-              开始测试
-            </el-button>
-            <el-button @click="clearResults">
-              清除结果
-            </el-button>
-            <el-button @click="showFavorites = true">
-              从收藏夹选择
-            </el-button>
-          </el-button-group>
-        </div>
-      </template>
+  <PageContainer>
+    <template #header>
+      <PageHeader
+        :title="$t('pages.mtrTest')"
+        :loading="loading"
+        @start-test="startTest"
+        @clear-results="clearResults"
+        @from-favorites="showFavorites = true"
+      />
+    </template>
 
-      <!-- 输入区域 -->
-      <el-form :model="form" label-position="top">
-        <el-form-item label="目标地址（每行一个域名或IP）">
-          <el-input
-            v-model="form.addresses"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入要测试的域名或IP地址，每行一个"
-          />
-        </el-form-item>
-        <el-form-item label="测试选项">
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <el-form-item label="数据包大小">
-                <el-input-number
-                  v-model="form.packetSize"
-                  :min="32"
-                  :max="65507"
-                  :step="1"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="测试次数">
-                <el-input-number
-                  v-model="form.count"
-                  :min="1"
-                  :max="100"
-                  :step="1"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="最大跳数">
-                <el-input-number
-                  v-model="form.maxHops"
-                  :min="1"
-                  :max="64"
-                  :step="1"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form-item>
-      </el-form>
+    <!-- 输入区域 -->
+    <AddressInputList
+      v-model="addressList"
+      :title="$t('form.targetList')"
+      :placeholder="$t('placeholder.enterAddress')"
+      :add-button-text="$t('buttons.add') + $t('table.address')"
+      value-key="address"
+      @batch-add="showBatchAdd = true"
+      @from-favorites="showFavorites = true"
+    />
 
-      <!-- 结果区域 -->
-      <div v-if="results.length > 0" class="results-area">
-        <div v-for="(result, index) in results" :key="index" class="result-item">
-          <h4>{{ result.host }}</h4>
-          <el-table :data="result.hops" style="width: 100%" border>
-            <el-table-column prop="hop" label="跳数" width="80" />
-            <el-table-column prop="host" label="主机" min-width="180" />
-            <el-table-column prop="ip" label="IP地址" width="150" />
-            <el-table-column label="丢包率" width="100">
-              <template #default="{ row }">
-                {{ row.loss }}%
-              </template>
-            </el-table-column>
-            <el-table-column label="延迟" width="200">
-              <template #default="{ row }">
-                {{ row.min }}/{{ row.avg }}/{{ row.max }} ms
-              </template>
-            </el-table-column>
-            <el-table-column prop="location" label="地理位置" width="200" />
-          </el-table>
-          <div class="result-actions">
-            <el-button type="primary" link @click="addToFavorites(result.host)">
-              添加到收藏夹
-            </el-button>
-          </div>
-        </div>
+    <!-- 测试选项 -->
+    <el-form :model="form" label-position="top">
+      <el-form-item :label="$t('form.testOptions')">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item :label="$t('form.packetSize') + '(' + $t('common.bytes') + ')'">
+              <el-input-number
+                v-model="form.packetSize"
+                :min="8"
+                :max="1472"
+                :step="8"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item :label="$t('form.count')">
+              <el-input-number
+                v-model="form.count"
+                :min="1"
+                :max="100"
+                :step="1"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item :label="$t('form.maxHops')">
+              <el-input-number
+                v-model="form.maxHops"
+                :min="1"
+                :max="64"
+                :step="1"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form-item>
+    </el-form>
+
+    <!-- 结果显示 -->
+    <div v-if="results.length > 0" class="results-section">
+      <div v-for="(result, index) in results" :key="index" class="result-item">
+        <h4>{{ result.target }}</h4>
+        <el-table :data="result.hops" style="width: 100%" border>
+          <el-table-column prop="hop" :label="$t('table.hop')" width="80" />
+          <el-table-column prop="ip" :label="$t('table.ip')" width="150" />
+          <el-table-column prop="hostname" :label="$t('table.hostname')" min-width="200" />
+          <el-table-column prop="loss" :label="$t('table.loss')" width="100">
+            <template #default="{ row }">
+              {{ row.loss }}%
+            </template>
+          </el-table-column>
+          <el-table-column prop="avg" :label="$t('table.avg')" width="100">
+            <template #default="{ row }">
+              {{ row.avg }} ms
+            </template>
+          </el-table-column>
+          <el-table-column prop="min" :label="$t('table.min')" width="100">
+            <template #default="{ row }">
+              {{ row.min }} ms
+            </template>
+          </el-table-column>
+          <el-table-column prop="max" :label="$t('table.max')" width="100">
+            <template #default="{ row }">
+              {{ row.max }} ms
+            </template>
+          </el-table-column>
+          <el-table-column prop="location" :label="$t('table.location')" width="200" />
+        </el-table>
       </div>
-    </el-card>
+    </div>
 
-    <!-- 收藏夹对话框 -->
-    <el-dialog
-      v-model="showFavorites"
-      title="从收藏夹选择"
-      width="500px"
-    >
-      <el-table
-        :data="favorites"
-        style="width: 100%"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="address" label="地址" />
-        <el-table-column prop="note" label="备注" />
-      </el-table>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="showFavorites = false">取消</el-button>
-          <el-button type="primary" @click="addSelectedToInput">
-            添加到输入框
-          </el-button>
-        </span>
-      </template>
-    </el-dialog>
-  </div>
+    <template #dialogs>
+      <!-- 收藏夹对话框 -->
+      <FavoritesDialog
+        v-model="showFavorites"
+        @selected="handleFavoritesSelected"
+      />
+
+      <!-- 批量添加对话框 -->
+      <BatchAddDialog
+        v-model="showBatchAdd"
+        :title="$t('buttons.batchAdd') + $t('table.address')"
+        :placeholder="$t('placeholder.batchAdd')"
+        @confirm="handleBatchAdd"
+      />
+    </template>
+  </PageContainer>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, inject } from 'vue'
 import { ElMessage } from 'element-plus'
 import storageService from '../services/storage'
+import {
+  PageContainer,
+  PageHeader,
+  AddressInputList,
+  FavoritesDialog,
+  BatchAddDialog
+} from '../components'
+
+// 注入国际化服务
+const $t = inject('$t')
+
+// 地址列表
+const addressList = ref([
+  { id: Date.now(), address: '' }
+])
 
 // 表单数据
 const form = reactive({
-  addresses: '',
   packetSize: 64,
   count: 10,
   maxHops: 30
@@ -137,44 +141,63 @@ const form = reactive({
 const loading = ref(false)
 const results = ref([])
 const showFavorites = ref(false)
-const favorites = ref([])
-const selectedFavorites = ref([])
-
-// 加载收藏列表
-const loadFavorites = () => {
-  favorites.value = storageService.getFavorites()
-}
-
-// 在组件挂载时加载收藏列表
-loadFavorites()
+const showBatchAdd = ref(false)
 
 // 开始测试
 const startTest = async () => {
-  if (!form.addresses.trim()) {
-    ElMessage.warning('请输入要测试的地址')
+  const validAddresses = addressList.value
+    .map(item => item.address.trim())
+    .filter(address => address)
+  
+  if (validAddresses.length === 0) {
+    ElMessage.warning($t('messages.pleaseAddAddress'))
     return
   }
 
   loading.value = true
+  results.value = []
+  
   try {
-    const addresses = form.addresses.split('\n').filter(addr => addr.trim())
-    // TODO: 调用后端API进行测试
-    // 模拟测试结果
-    results.value = addresses.map(host => ({
-      host,
-      hops: Array(5).fill().map((_, i) => ({
-        hop: i + 1,
-        host: `router-${i + 1}.example.com`,
-        ip: '192.168.1.' + (i + 1),
-        loss: Math.floor(Math.random() * 10),
-        min: 10 + i * 5,
-        avg: 15 + i * 5,
-        max: 20 + i * 5,
-        location: '中国 上海'
-      }))
-    }))
+    const tempResults = []
+
+    for (const address of validAddresses) {
+      try {
+        console.log('正在测试地址:', address)
+        
+        // 模拟MTR测试结果
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000))
+        
+        const hops = []
+        const hopCount = Math.floor(Math.random() * 15) + 5
+        
+        for (let i = 1; i <= hopCount; i++) {
+          hops.push({
+            hop: i,
+            ip: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+            hostname: i === hopCount ? address : `hop${i}.example.com`,
+            loss: Math.floor(Math.random() * 5),
+            avg: Math.floor(Math.random() * 100) + 10,
+            min: Math.floor(Math.random() * 50) + 5,
+            max: Math.floor(Math.random() * 150) + 20,
+            location: `Location ${i}`
+          })
+        }
+        
+        tempResults.push({
+          target: address,
+          hops
+        })
+      } catch (error) {
+        console.error('测试失败:', error)
+        ElMessage.error(`${$t('messages.testFailed')} ${address}: ${error.message}`)
+      }
+    }
+
+    results.value = tempResults
+    console.log('测试完成，结果:', results.value)
   } catch (error) {
-    ElMessage.error('测试失败：' + error.message)
+    console.error('测试过程出错:', error)
+    ElMessage.error($t('messages.testFailed') + '：' + error.message)
   } finally {
     loading.value = false
   }
@@ -188,40 +211,45 @@ const clearResults = () => {
 // 添加到收藏夹
 const addToFavorites = (address) => {
   try {
-    storageService.addFavorite({ address, note: '' })
-    ElMessage.success('已添加到收藏夹')
+    const success = storageService.addFavorite({
+      address: address,
+      note: $t('messages.addedFromPage', { page: $t('pages.mtrTest') })
+    })
+    
+    if (success) {
+      ElMessage.success($t('messages.addToFavorites'))
+    } else {
+      ElMessage.warning($t('messages.alreadyInFavorites'))
+    }
   } catch (error) {
-    ElMessage.error('添加失败：' + error.message)
+    console.error('添加收藏失败:', error)
+    ElMessage.error($t('messages.saveFailed') + '：' + error.message)
   }
 }
 
-// 处理收藏夹选择变化
-const handleSelectionChange = (selection) => {
-  selectedFavorites.value = selection
+// 处理收藏夹选择
+const handleFavoritesSelected = (selectedItems) => {
+  selectedItems.forEach(item => {
+    addressList.value.push({
+      id: Date.now() + Math.random(),
+      address: item.address
+    })
+  })
 }
 
-// 添加选中的收藏到输入框
-const addSelectedToInput = () => {
-  const currentValue = form.addresses.trim()
-  const newAddresses = selectedFavorites.value.map(f => f.address).join('\n')
-  form.addresses = currentValue ? `${currentValue}\n${newAddresses}` : newAddresses
-  showFavorites.value = false
+// 处理批量添加
+const handleBatchAdd = (addresses) => {
+  addresses.forEach(address => {
+    addressList.value.push({
+      id: Date.now() + Math.random(),
+      address
+    })
+  })
 }
 </script>
 
 <style scoped>
-.mtr {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.results-area {
+.results-section {
   margin-top: 20px;
 }
 
@@ -230,20 +258,7 @@ const addSelectedToInput = () => {
 }
 
 .result-item h4 {
-  margin: 10px 0;
-  padding: 10px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-}
-
-.result-actions {
-  margin-top: 10px;
-  text-align: right;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  margin-bottom: 10px;
+  color: #409EFF;
 }
 </style> 

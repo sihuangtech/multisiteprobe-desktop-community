@@ -4,31 +4,35 @@
       <el-menu mode="horizontal" router>
         <el-menu-item index="/">
           <el-icon><Search /></el-icon>
-          IP/域名查询
+          {{ $t('nav.ipLookup') }}
         </el-menu-item>
         <el-menu-item index="/ping">
           <el-icon><Connection /></el-icon>
-          Ping测试
+          Ping{{ $t('nav.test') || '测试' }}
         </el-menu-item>
         <el-menu-item index="/http">
           <el-icon><Monitor /></el-icon>
-          HTTP测试
+          {{ $t('nav.http') }}
         </el-menu-item>
         <el-menu-item index="/dns">
           <el-icon><Share /></el-icon>
-          DNS测试
+          {{ $t('nav.dns') }}
         </el-menu-item>
         <el-menu-item index="/mtr">
           <el-icon><Histogram /></el-icon>
-          MTR测试
+          {{ $t('nav.mtr') }}
         </el-menu-item>
         <el-menu-item index="/traceroute">
           <el-icon><Position /></el-icon>
-          路由追踪
+          {{ $t('nav.traceroute') }}
         </el-menu-item>
         <el-menu-item index="/favorites">
           <el-icon><Star /></el-icon>
-          收藏夹
+          {{ $t('nav.favorites') }}
+        </el-menu-item>
+        <el-menu-item index="/settings" class="settings-menu">
+          <el-icon><Setting /></el-icon>
+          {{ $t('nav.settings') }}
         </el-menu-item>
       </el-menu>
     </el-header>
@@ -40,7 +44,11 @@
 </template>
 
 <script setup>
-import { Search, Connection, Monitor, Share, Histogram, Position, Star } from '@element-plus/icons-vue'
+import { inject } from 'vue'
+import { Search, Connection, Monitor, Share, Histogram, Position, Star, Setting } from '@element-plus/icons-vue'
+
+// 注入国际化服务
+const $t = inject('$t')
 </script>
 
 <style scoped>
@@ -61,5 +69,14 @@ import { Search, Connection, Monitor, Share, Histogram, Position, Star } from '@
 .el-menu-item [class^="el-icon-"] {
   margin-right: 5px;
   vertical-align: middle;
+}
+
+/* 深色主题下的主要区域 */
+html.dark .el-main {
+  background-color: #1a1a1a;
+}
+
+html.dark .el-header {
+  border-bottom-color: #4c4d4f;
 }
 </style> 

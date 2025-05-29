@@ -5,7 +5,7 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <h2>多站点延迟测试工具</h2>
+              <h2>{{ $t('settings.appName') }}</h2>
             </div>
           </template>
           <div class="feature-list">
@@ -13,22 +13,22 @@
               <el-col :span="8">
                 <el-card class="feature-card" @click="$router.push('/traceroute')">
                   <el-icon><Position /></el-icon>
-                  <h3>路由追踪</h3>
-                  <p>追踪数据包从源到目标的路径，显示每一跳的延迟和地理位置信息</p>
+                  <h3>{{ $t('nav.traceroute') }}</h3>
+                  <p>{{ $t('home.tracerouteDesc') }}</p>
                 </el-card>
               </el-col>
               <el-col :span="8">
                 <el-card class="feature-card" @click="$router.push('/favorites')">
                   <el-icon><Star /></el-icon>
-                  <h3>收藏夹</h3>
-                  <p>管理常用的目标地址，快速进行测试</p>
+                  <h3>{{ $t('nav.favorites') }}</h3>
+                  <p>{{ $t('home.favoritesDesc') }}</p>
                 </el-card>
               </el-col>
               <el-col :span="8">
                 <el-card class="feature-card">
                   <el-icon><Setting /></el-icon>
-                  <h3>更多功能</h3>
-                  <p>敬请期待...</p>
+                  <h3>{{ $t('home.moreFeatures') }}</h3>
+                  <p>{{ $t('home.comingSoon') }}</p>
                 </el-card>
               </el-col>
             </el-row>
@@ -40,7 +40,11 @@
 </template>
 
 <script setup>
+import { inject } from 'vue'
 import { Position, Star, Setting } from '@element-plus/icons-vue'
+
+// 注入国际化服务
+const $t = inject('$t')
 </script>
 
 <style scoped>

@@ -1,0 +1,564 @@
+/* 基础样式 */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 浅色主题 */
+html.light {
+  color-scheme: light;
+}
+
+html.light body {
+  background-color: #ffffff;
+  color: #2c3e50;
+}
+
+html.light .el-card {
+  background-color: #ffffff;
+  border-color: #ebeef5;
+}
+
+html.light .el-input__wrapper {
+  background-color: #ffffff;
+  border-color: #dcdfe6;
+}
+
+html.light .el-button--primary {
+  background-color: #409eff;
+  border-color: #409eff;
+}
+
+html.light .el-table {
+  background-color: #ffffff;
+}
+
+html.light .el-table th.el-table__cell {
+  background-color: #fafafa;
+}
+
+html.light .el-table tr {
+  background-color: #ffffff;
+}
+
+html.light .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: #fafafa;
+}
+
+/* 深色主题 */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #1a1a1a;
+  color: #e5e7eb;
+}
+
+html.dark .el-card {
+  background-color: #2d2d2d !important;
+  border-color: #4c4d4f !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-card__header {
+  background-color: #2d2d2d !important;
+  border-bottom-color: #4c4d4f !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-card__body {
+  background-color: #2d2d2d !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-input__wrapper {
+  background-color: #3a3a3a !important;
+  border-color: #4c4d4f !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-input__inner {
+  background-color: transparent !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-input__inner::placeholder {
+  color: #9ca3af !important;
+}
+
+/* 深色主题按钮样式 - 修复收藏按钮显示问题 */
+html.dark .el-button {
+  background-color: #3a3a3a !important;
+  border-color: #4c4d4f !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-button:hover {
+  background-color: #4a4a4a !important;
+  border-color: #5c5d5f !important;
+}
+
+/* Primary按钮 - 蓝底白字 */
+html.dark .el-button--primary {
+  background-color: #409eff !important;
+  border-color: #409eff !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-button--primary:hover {
+  background-color: #66b1ff !important;
+  border-color: #66b1ff !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-button--primary:focus {
+  background-color: #409eff !important;
+  border-color: #409eff !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-button--primary:active {
+  background-color: #3a8ee6 !important;
+  border-color: #3a8ee6 !important;
+  color: #ffffff !important;
+}
+
+/* Link按钮 - 文字链接样式 */
+html.dark .el-button--primary.is-link {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #409eff !important;
+}
+
+html.dark .el-button--primary.is-link:hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #66b1ff !important;
+}
+
+html.dark .el-button--primary.is-link:focus {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #409eff !important;
+}
+
+html.dark .el-button--primary.is-link:active {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #3a8ee6 !important;
+}
+
+/* 其他类型的link按钮 */
+html.dark .el-button.is-link {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #409eff !important;
+}
+
+html.dark .el-button.is-link:hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #66b1ff !important;
+}
+
+/* 表格中的link按钮特殊处理 - 确保在表格中也能正确显示 */
+html.dark .el-table .el-button--primary.is-link {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #409eff !important;
+  padding: 0 !important;
+  height: auto !important;
+  line-height: normal !important;
+}
+
+html.dark .el-table .el-button--primary.is-link:hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #66b1ff !important;
+}
+
+html.dark .el-table .el-button--primary.is-link:focus {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #409eff !important;
+}
+
+html.dark .el-table .el-button--primary.is-link:active {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #3a8ee6 !important;
+}
+
+/* 确保所有link类型按钮都是透明背景 */
+html.dark .el-table .el-button.is-link {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #409eff !important;
+  padding: 0 !important;
+  height: auto !important;
+  line-height: normal !important;
+}
+
+html.dark .el-table .el-button.is-link:hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #66b1ff !important;
+}
+
+/* Danger类型的link按钮 */
+html.dark .el-table .el-button--danger.is-link {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #f56c6c !important;
+  padding: 0 !important;
+  height: auto !important;
+  line-height: normal !important;
+}
+
+html.dark .el-table .el-button--danger.is-link:hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #f78989 !important;
+}
+
+/* Success按钮 */
+html.dark .el-button--success {
+  background-color: #67c23a !important;
+  border-color: #67c23a !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-button--success:hover {
+  background-color: #85ce61 !important;
+  border-color: #85ce61 !important;
+  color: #ffffff !important;
+}
+
+/* Warning按钮 */
+html.dark .el-button--warning {
+  background-color: #e6a23c !important;
+  border-color: #e6a23c !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-button--warning:hover {
+  background-color: #ebb563 !important;
+  border-color: #ebb563 !important;
+  color: #ffffff !important;
+}
+
+/* Danger按钮 */
+html.dark .el-button--danger {
+  background-color: #f56c6c !important;
+  border-color: #f56c6c !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-button--danger:hover {
+  background-color: #f78989 !important;
+  border-color: #f78989 !important;
+  color: #ffffff !important;
+}
+
+/* Info按钮 */
+html.dark .el-button--info {
+  background-color: #909399 !important;
+  border-color: #909399 !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-button--info:hover {
+  background-color: #a6a9ad !important;
+  border-color: #a6a9ad !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-select .el-input__wrapper {
+  background-color: #3a3a3a !important;
+  border-color: #4c4d4f !important;
+}
+
+html.dark .el-select-dropdown {
+  background-color: #3a3a3a !important;
+  border-color: #4c4d4f !important;
+}
+
+html.dark .el-select-dropdown__item {
+  color: #e5e7eb !important;
+}
+
+html.dark .el-select-dropdown__item:hover {
+  background-color: #4a4a4a !important;
+}
+
+html.dark .el-select-dropdown__item.selected {
+  background-color: #409eff !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-table {
+  background-color: #2d2d2d !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-table th.el-table__cell {
+  background-color: #3a3a3a !important;
+  color: #e5e7eb !important;
+  border-bottom-color: #4c4d4f !important;
+}
+
+html.dark .el-table td.el-table__cell {
+  border-bottom-color: #4c4d4f !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-table tr {
+  background-color: #2d2d2d !important;
+}
+
+html.dark .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: #3a3a3a !important;
+}
+
+html.dark .el-table tr:hover > td.el-table__cell {
+  background-color: #4a4a4a !important;
+}
+
+html.dark .el-form-item__label {
+  color: #e5e7eb !important;
+}
+
+html.dark .el-descriptions__label {
+  color: #e5e7eb !important;
+}
+
+html.dark .el-descriptions__content {
+  color: #e5e7eb !important;
+}
+
+html.dark .el-descriptions__table {
+  border-color: #4c4d4f !important;
+}
+
+html.dark .el-descriptions__cell {
+  border-color: #4c4d4f !important;
+}
+
+html.dark .el-switch__core {
+  background-color: #4c4d4f !important;
+  border-color: #4c4d4f !important;
+}
+
+html.dark .el-switch.is-checked .el-switch__core {
+  background-color: #409eff !important;
+  border-color: #409eff !important;
+}
+
+html.dark .el-input-number .el-input__wrapper {
+  background-color: #3a3a3a !important;
+  border-color: #4c4d4f !important;
+}
+
+html.dark .el-input-number__decrease,
+html.dark .el-input-number__increase {
+  background-color: #3a3a3a !important;
+  border-color: #4c4d4f !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-input-number__decrease:hover,
+html.dark .el-input-number__increase:hover {
+  background-color: #4a4a4a !important;
+  color: #409eff !important;
+}
+
+html.dark .el-tag {
+  background-color: #3a3a3a !important;
+  border-color: #4c4d4f !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-tag--success {
+  background-color: #67c23a !important;
+  border-color: #67c23a !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-tag--danger {
+  background-color: #f56c6c !important;
+  border-color: #f56c6c !important;
+  color: #ffffff !important;
+}
+
+html.dark .el-dialog {
+  background-color: #2d2d2d !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-dialog__header {
+  background-color: #2d2d2d !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-dialog__title {
+  color: #e5e7eb !important;
+}
+
+html.dark .el-dialog__body {
+  background-color: #2d2d2d !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-textarea__inner {
+  background-color: #3a3a3a !important;
+  border-color: #4c4d4f !important;
+  color: #e5e7eb !important;
+}
+
+html.dark .el-textarea__inner::placeholder {
+  color: #9ca3af !important;
+}
+
+html.dark .el-checkbox__input.is-checked .el-checkbox__inner {
+  background-color: #409eff !important;
+  border-color: #409eff !important;
+}
+
+html.dark .el-checkbox__inner {
+  background-color: #3a3a3a !important;
+  border-color: #4c4d4f !important;
+}
+
+html.dark .el-checkbox__label {
+  color: #e5e7eb !important;
+}
+
+html.dark .el-link {
+  color: #409eff !important;
+}
+
+html.dark .el-link:hover {
+  color: #66b1ff !important;
+}
+
+/* 导航栏深色主题 */
+html.dark .el-menu {
+  background-color: #2d2d2d !important;
+  border-color: #4c4d4f !important;
+}
+
+html.dark .el-menu-item {
+  color: #e5e7eb !important;
+}
+
+html.dark .el-menu-item:hover {
+  background-color: #4a4a4a !important;
+  color: #409eff !important;
+}
+
+html.dark .el-menu-item.is-active {
+  background-color: #409eff !important;
+  color: #ffffff !important;
+}
+
+/* 滚动条深色主题 */
+html.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: #2d2d2d;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #4c4d4f;
+  border-radius: 4px;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #5c5d5f;
+}
+
+/* 通用样式 */
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+
+button:hover {
+  border-color: #646cff;
+}
+
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+.card {
+  padding: 2em;
+}
+
+#app {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* 响应式设计 */
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  
+  a:hover {
+    color: #747bff;
+  }
+  
+  button {
+    background-color: #f9f9f9;
+  }
+} 

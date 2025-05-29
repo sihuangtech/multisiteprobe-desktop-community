@@ -1,157 +1,245 @@
 <template>
-  <div class="ip-lookup">
-    <el-card>
+  <PageContainer>
+    <!-- 当前IP信息卡片 -->
+    <el-card class="current-ip-card">
       <template #header>
         <div class="card-header">
-          <h3>IP/域名查询</h3>
-          <el-button-group>
-            <el-button type="primary" @click="startQuery" :loading="loading">
-              开始查询
-            </el-button>
-            <el-button @click="clearResults">
-              清除结果
-            </el-button>
-            <el-button @click="showFavorites = true">
-              从收藏夹选择
-            </el-button>
-          </el-button-group>
+          <h3>{{ $t('currentIp.title') }}</h3>
+          <el-button @click="refreshCurrentIp" :loading="currentIpLoading" size="small">
+            <el-icon><Refresh /></el-icon>
+            {{ $t('buttons.refresh') }}
+          </el-button>
         </div>
       </template>
-
-      <!-- 输入区域 -->
-      <el-form :model="form" label-position="top">
-        <el-form-item label="目标地址（每行一个域名或IP）">
-          <el-input
-            v-model="form.addresses"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入要查询的域名或IP地址，每行一个"
-          />
-        </el-form-item>
-      </el-form>
-
-      <!-- 结果表格 -->
-      <div v-if="results.length > 0" class="results-table">
-        <el-table :data="results" style="width: 100%" border>
-          <el-table-column prop="query" label="查询地址" width="180" />
-          <el-table-column prop="ip" label="IP地址" width="150" />
-          <el-table-column prop="country" label="国家/地区" width="120" />
-          <el-table-column prop="region" label="省份/州" width="120" />
-          <el-table-column prop="city" label="城市" width="120" />
-          <el-table-column prop="isp" label="ISP" />
-          <el-table-column label="操作" width="100" fixed="right">
-            <template #default="{ row }">
-              <el-button
-                type="primary"
-                link
-                @click="addToFavorites(row.query)"
-              >
-                收藏
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+      
+      <div v-if="currentIpInfo && !currentIpLoading" class="current-ip-info">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <div class="info-item">
+              <label>{{ $t('currentIp.address') }}:</label>
+              <span class="ip-address">{{ currentIpInfo.ip }}</span>
+            </div>
+          </el-col>
+          <el-col :span="8">
+            <div class="info-item">
+              <label>{{ $t('currentIp.country') }}:</label>
+              <span>{{ currentIpInfo.country || '-' }}</span>
+            </div>
+          </el-col>
+          <el-col :span="8">
+            <div class="info-item">
+              <label>{{ $t('currentIp.region') }}:</label>
+              <span>{{ currentIpInfo.region || '-' }}</span>
+            </div>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <div class="info-item">
+              <label>{{ $t('currentIp.city') }}:</label>
+              <span>{{ currentIpInfo.city || '-' }}</span>
+            </div>
+          </el-col>
+          <el-col :span="8">
+            <div class="info-item">
+              <label>{{ $t('currentIp.isp') }}:</label>
+              <span>{{ currentIpInfo.isp || '-' }}</span>
+            </div>
+          </el-col>
+          <el-col :span="8">
+            <div class="info-item">
+              <label>{{ $t('currentIp.queryTime') }}:</label>
+              <span>{{ formatDate(currentIpInfo.queryTime) }}</span>
+            </div>
+          </el-col>
+        </el-row>
+      </div>
+      
+      <div v-else-if="currentIpLoading" class="loading-info">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        {{ $t('currentIp.loading') }}
+      </div>
+      
+      <div v-else class="error-info">
+        <el-icon><Warning /></el-icon>
+        {{ $t('currentIp.error') }}
       </div>
     </el-card>
 
-    <!-- 收藏夹对话框 -->
-    <el-dialog
-      v-model="showFavorites"
-      title="从收藏夹选择"
-      width="500px"
-    >
-      <el-table
-        :data="favorites"
-        style="width: 100%"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="address" label="地址" />
-        <el-table-column prop="note" label="备注" />
-      </el-table>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="showFavorites = false">取消</el-button>
-          <el-button type="primary" @click="addSelectedToInput">
-            添加到输入框
-          </el-button>
-        </span>
-      </template>
-    </el-dialog>
-  </div>
+    <template #header>
+      <PageHeader
+        :title="$t('pages.ipLookup')"
+        :start-button-text="$t('buttons.startQuery')"
+        :loading="loading"
+        @start-test="startQuery"
+        @clear-results="clearResults"
+        @from-favorites="showFavorites = true"
+      />
+    </template>
+
+    <!-- 输入区域 -->
+    <AddressInputList
+      v-model="addressList"
+      :title="$t('form.targetList')"
+      :placeholder="$t('placeholder.enterAddress')"
+      :add-button-text="$t('buttons.add') + $t('table.address')"
+      value-key="address"
+      @batch-add="showBatchAdd = true"
+      @from-favorites="showFavorites = true"
+    />
+
+    <!-- 结果表格 -->
+    <ResultsTable
+      :data="results"
+      :columns="tableColumns"
+      address-key="query"
+      @add-to-favorites="addToFavorites"
+    />
+
+    <template #dialogs>
+      <!-- 收藏夹对话框 -->
+      <FavoritesDialog
+        v-model="showFavorites"
+        @selected="handleFavoritesSelected"
+      />
+
+      <!-- 批量添加对话框 -->
+      <BatchAddDialog
+        v-model="showBatchAdd"
+        :title="$t('buttons.batchAdd') + $t('table.address')"
+        :placeholder="$t('placeholder.batchAdd')"
+        @confirm="handleBatchAdd"
+      />
+    </template>
+  </PageContainer>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, inject } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Refresh, Loading, Warning } from '@element-plus/icons-vue'
 import storageService from '../services/storage'
-import ip2locationService from '../services/ip2location'
+import ipService from '../services/ipService'
+import {
+  PageContainer,
+  PageHeader,
+  AddressInputList,
+  ResultsTable,
+  FavoritesDialog,
+  BatchAddDialog
+} from '../components'
 
-// 表单数据
-const form = reactive({
-  addresses: ''
-})
+// 注入国际化服务
+const $t = inject('$t')
+
+// 地址列表
+const addressList = ref([
+  { id: Date.now(), address: '' }
+])
 
 // 状态变量
 const loading = ref(false)
 const results = ref([])
 const showFavorites = ref(false)
-const favorites = ref([])
-const selectedFavorites = ref([])
+const showBatchAdd = ref(false)
 
-// 加载收藏列表
-const loadFavorites = () => {
-  favorites.value = storageService.getFavorites()
+// 当前IP信息相关
+const currentIpInfo = ref(null)
+const currentIpLoading = ref(false)
+
+// 表格列配置
+const tableColumns = [
+  { prop: 'query', label: $t('table.query'), width: 200 },
+  { prop: 'ip', label: $t('table.ip'), width: 150 },
+  { prop: 'country', label: $t('table.country'), width: 150 },
+  { prop: 'region', label: $t('table.region'), width: 150 },
+  { prop: 'city', label: $t('table.city'), width: 120 },
+  { prop: 'isp', label: $t('table.isp'), minWidth: 200 }
+]
+
+// 格式化日期
+const formatDate = (date) => {
+  if (!date) return '-'
+  return new Date(date).toLocaleString()
 }
 
-// 在组件挂载时加载收藏列表
-loadFavorites()
-
-// 解析域名为IP地址
-const resolveDomain = async (domain) => {
+// 获取当前IP信息
+const getCurrentIpInfo = async () => {
+  currentIpLoading.value = true
   try {
-    // 通过 IPC 调用主进程的 DNS 解析
-    const ip = await window.electron.ipcRenderer.invoke('resolve-dns', domain)
-    return ip
+    // 直接使用IP查询服务获取当前IP和地理位置信息
+    // 传入空字符串或特殊标识让服务知道要查询当前IP
+    const result = await ipService.lookupIpLocation('current')
+    
+    if (result.success) {
+      currentIpInfo.value = {
+        ip: result.data.ip || '-',
+        country: result.data.country || '-',
+        region: result.data.region || '-',
+        city: result.data.city || '-',
+        isp: result.data.isp || '-',
+        queryTime: new Date()
+      }
+    } else {
+      console.error('获取当前IP信息失败:', result.error)
+      ElMessage.error($t('messages.getCurrentIpFailed') + ': ' + result.error)
+    }
   } catch (error) {
-    console.error('域名解析失败:', error)
-    return domain // 如果解析失败，返回原始输入
+    console.error('获取当前IP信息异常:', error)
+    ElMessage.error($t('messages.getCurrentIpFailed') + ': ' + error.message)
+  } finally {
+    currentIpLoading.value = false
   }
+}
+
+// 刷新当前IP信息
+const refreshCurrentIp = () => {
+  getCurrentIpInfo()
 }
 
 // 开始查询
 const startQuery = async () => {
-  if (!form.addresses.trim()) {
-    ElMessage.warning('请输入要查询的地址')
+  const validAddresses = addressList.value
+    .map(item => item.address.trim())
+    .filter(address => address)
+  
+  if (validAddresses.length === 0) {
+    ElMessage.warning($t('messages.pleaseAddAddress'))
     return
   }
 
   loading.value = true
-  results.value = [] // 清空之前的结果
+  results.value = []
   
   try {
-    const addresses = form.addresses.split('\n').filter(addr => addr.trim())
-    const tempResults = [] // 使用临时数组存储结果
+    const tempResults = []
 
-    for (const address of addresses) {
+    for (const address of validAddresses) {
       try {
         console.log('正在查询地址:', address)
-        // 先尝试解析域名为IP
-        const ip = await resolveDomain(address)
-        console.log('解析到IP:', ip)
         
-        // 查询IP地理位置
-        const info = await ip2locationService.lookup(ip)
-        console.log('获取到地理位置信息:', info)
+        const result = await ipService.lookupIpLocation(address)
         
-        tempResults.push({
-          query: address,
-          ip: ip,
-          country: info.country_name || '-',
-          region: info.region_name || '-',
-          city: info.city_name || '-',
-          isp: info.isp || '-'
-        })
+        if (result.success) {
+          tempResults.push({
+            query: address,
+            ip: result.data.ip || address,
+            country: result.data.country || '-',
+            region: result.data.region || '-',
+            city: result.data.city || '-',
+            isp: result.data.isp || '-'
+          })
+        } else {
+          tempResults.push({
+            query: address,
+            ip: '-',
+            country: '-',
+            region: '-',
+            city: '-',
+            isp: $t('messages.queryFailed') + ': ' + result.error
+          })
+          ElMessage.error(`${$t('messages.queryFailed')} ${address}: ${result.error}`)
+        }
       } catch (error) {
         console.error('查询失败:', error)
         tempResults.push({
@@ -160,18 +248,17 @@ const startQuery = async () => {
           country: '-',
           region: '-',
           city: '-',
-          isp: '-',
-          error: error.message
+          isp: $t('messages.queryFailed') + ': ' + error.message
         })
-        ElMessage.error(`查询 ${address} 失败: ${error.message}`)
+        ElMessage.error(`${$t('messages.queryFailed')} ${address}: ${error.message}`)
       }
     }
 
-    results.value = tempResults // 更新响应式结果数组
+    results.value = tempResults
     console.log('查询完成，结果:', results.value)
   } catch (error) {
     console.error('查询过程出错:', error)
-    ElMessage.error('查询失败：' + error.message)
+    ElMessage.error($t('messages.queryFailed') + '：' + error.message)
   } finally {
     loading.value = false
   }
@@ -184,45 +271,102 @@ const clearResults = () => {
 
 // 添加到收藏夹
 const addToFavorites = (address) => {
-  // TODO: 调用收藏夹API
-  ElMessage.success('已添加到收藏夹')
+  try {
+    const success = storageService.addFavorite({
+      address: address,
+      note: $t('messages.addedFromPage', { page: $t('pages.ipLookup') })
+    })
+    
+    if (success) {
+      ElMessage.success($t('messages.addToFavorites'))
+    } else {
+      ElMessage.warning($t('messages.alreadyInFavorites'))
+    }
+  } catch (error) {
+    console.error('添加收藏失败:', error)
+    ElMessage.error($t('messages.saveFailed') + '：' + error.message)
+  }
 }
 
-// 处理收藏夹选择变化
-const handleSelectionChange = (selection) => {
-  selectedFavorites.value = selection
+// 处理收藏夹选择
+const handleFavoritesSelected = (selectedItems) => {
+  selectedItems.forEach(item => {
+    addressList.value.push({
+      id: Date.now() + Math.random(),
+      address: item.address
+    })
+  })
 }
 
-// 添加选中项到输入框
-const addSelectedToInput = () => {
-  const currentValue = form.addresses.trim()
-  const newAddresses = selectedFavorites.value.map(item => item.address)
-  form.addresses = currentValue
-    ? `${currentValue}\n${newAddresses.join('\n')}`
-    : newAddresses.join('\n')
-  showFavorites.value = false
+// 处理批量添加
+const handleBatchAdd = (addresses) => {
+  addresses.forEach(address => {
+    addressList.value.push({
+      id: Date.now() + Math.random(),
+      address
+    })
+  })
 }
+
+// 组件挂载时获取当前IP信息
+onMounted(() => {
+  getCurrentIpInfo()
+})
 </script>
 
 <style scoped>
-.ip-lookup {
-  max-width: 1200px;
-  margin: 0 auto;
+.current-ip-card {
+  margin-bottom: 20px;
+}
+
+.current-ip-info {
+  padding: 10px 0;
+}
+
+.current-ip-info .el-row + .el-row {
+  margin-top: 15px;
+}
+
+.info-item {
+  margin-bottom: 8px;
+}
+
+.info-item label {
+  font-weight: bold;
+  color: #606266;
+  margin-right: 8px;
+}
+
+.ip-address {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-weight: bold;
+  color: #409EFF;
+  font-size: 16px;
+}
+
+.loading-info, .error-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #909399;
+}
+
+.loading-info .el-icon {
+  margin-right: 8px;
+}
+
+.error-info {
+  color: #F56C6C;
+}
+
+.error-info .el-icon {
+  margin-right: 8px;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.results-table {
-  margin-top: 20px;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
 }
 </style> 

@@ -1,3 +1,5 @@
+'use strict';
+
 /*
   MultiSite Latency Tool
 
@@ -24,4 +26,9 @@ contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
     invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args)
   }
+});
+
+// 暴露electronAPI给渲染进程
+contextBridge.exposeInMainWorld('electronAPI', {
+  openExternal: (url) => ipcRenderer.invoke('open-external', url)
 });

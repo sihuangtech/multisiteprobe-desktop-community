@@ -1,184 +1,209 @@
 <template>
-  <div class="http">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <h3>HTTP测试</h3>
-          <el-button-group>
-            <el-button type="primary" @click="startTest" :loading="loading">
-              开始测试
-            </el-button>
-            <el-button @click="clearResults">
-              清除结果
-            </el-button>
-            <el-button @click="showFavorites = true">
-              从收藏夹选择
-            </el-button>
-          </el-button-group>
-        </div>
-      </template>
+  <PageContainer>
+    <template #header>
+      <PageHeader
+        :title="$t('pages.httpTest')"
+        :loading="loading"
+        @start-test="startTest"
+        @clear-results="clearResults"
+        @from-favorites="showFavorites = true"
+      />
+    </template>
 
-      <!-- 输入区域 -->
-      <el-form :model="form" label-position="top">
-        <el-form-item label="目标地址（每行一个URL）">
-          <el-input
-            v-model="form.urls"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入要测试的URL，每行一个"
-          />
-        </el-form-item>
-        <el-form-item label="测试选项">
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <el-form-item label="请求方法">
-                <el-select v-model="form.method">
-                  <el-option label="GET" value="GET" />
-                  <el-option label="POST" value="POST" />
-                  <el-option label="HEAD" value="HEAD" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="超时时间(秒)">
-                <el-input-number
-                  v-model="form.timeout"
-                  :min="1"
-                  :max="30"
-                  :step="1"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="测试次数">
-                <el-input-number
-                  v-model="form.count"
-                  :min="1"
-                  :max="100"
-                  :step="1"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form-item>
-      </el-form>
+    <!-- 输入区域 -->
+    <AddressInputList
+      v-model="urlList"
+      :title="$t('form.urlList')"
+      :placeholder="$t('placeholder.enterUrl')"
+      :add-button-text="$t('buttons.add') + 'URL'"
+      value-key="url"
+      @batch-add="showBatchAdd = true"
+      @from-favorites="showFavorites = true"
+    />
 
-      <!-- 结果表格 -->
-      <div v-if="results.length > 0" class="results-table">
-        <el-table :data="results" style="width: 100%" border>
-          <el-table-column prop="url" label="URL" min-width="200" />
-          <el-table-column prop="statusCode" label="状态码" width="100" />
-          <el-table-column label="响应时间" width="200">
-            <template #default="{ row }">
-              {{ row.min }}/{{ row.avg }}/{{ row.max }} ms
-            </template>
-          </el-table-column>
-          <el-table-column prop="size" label="响应大小" width="120">
-            <template #default="{ row }">
-              {{ formatSize(row.size) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="100" fixed="right">
-            <template #default="{ row }">
-              <el-button
-                type="primary"
-                link
-                @click="addToFavorites(row.url)"
-              >
-                收藏
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-    </el-card>
+    <!-- 测试选项 -->
+    <el-form :model="form" label-position="top">
+      <el-form-item :label="$t('form.testOptions')">
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item :label="$t('form.method')">
+              <el-select v-model="form.method" :placeholder="$t('placeholder.selectMethod')">
+                <el-option :label="$t('testOptions.getMethod')" value="GET" />
+                <el-option :label="$t('testOptions.postMethod')" value="POST" />
+                <el-option :label="$t('testOptions.headMethod')" value="HEAD" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item :label="$t('form.timeout') + '(' + $t('common.seconds') + ')'">
+              <el-input-number
+                v-model="form.timeout"
+                :min="1"
+                :max="60"
+                :step="1"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item :label="$t('form.retries')">
+              <el-input-number
+                v-model="form.retries"
+                :min="0"
+                :max="5"
+                :step="1"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form-item>
+    </el-form>
 
-    <!-- 收藏夹对话框 -->
-    <el-dialog
-      v-model="showFavorites"
-      title="从收藏夹选择"
-      width="500px"
+    <!-- 结果表格 -->
+    <ResultsTable
+      :data="results"
+      :columns="tableColumns"
+      address-key="url"
+      @add-to-favorites="addToFavorites"
     >
-      <el-table
-        :data="favorites"
-        style="width: 100%"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="address" label="地址" />
-        <el-table-column prop="note" label="备注" />
-      </el-table>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="showFavorites = false">取消</el-button>
-          <el-button type="primary" @click="addSelectedToInput">
-            添加到输入框
-          </el-button>
-        </span>
+      <template #status="{ row }">
+        <el-tag 
+          :type="getStatusType(row.status)"
+          size="small"
+        >
+          {{ row.status }}
+        </el-tag>
       </template>
-    </el-dialog>
-  </div>
+    </ResultsTable>
+
+    <template #dialogs>
+      <!-- 收藏夹对话框 -->
+      <FavoritesDialog
+        v-model="showFavorites"
+        @selected="handleFavoritesSelected"
+      />
+
+      <!-- 批量添加对话框 -->
+      <BatchAddDialog
+        v-model="showBatchAdd"
+        :title="$t('buttons.batchAdd') + 'URL'"
+        :placeholder="$t('placeholder.batchAdd')"
+        @confirm="handleBatchAdd"
+      />
+    </template>
+  </PageContainer>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, inject } from 'vue'
 import { ElMessage } from 'element-plus'
 import storageService from '../services/storage'
+import {
+  PageContainer,
+  PageHeader,
+  AddressInputList,
+  ResultsTable,
+  FavoritesDialog,
+  BatchAddDialog
+} from '../components'
+
+// 注入国际化服务
+const $t = inject('$t')
+
+// URL列表
+const urlList = ref([
+  { id: Date.now(), url: '' }
+])
 
 // 表单数据
 const form = reactive({
-  urls: '',
   method: 'GET',
-  timeout: 5,
-  count: 4
+  timeout: 10,
+  retries: 1
 })
 
 // 状态变量
 const loading = ref(false)
 const results = ref([])
 const showFavorites = ref(false)
-const favorites = ref([])
-const selectedFavorites = ref([])
+const showBatchAdd = ref(false)
 
-// 加载收藏列表
-const loadFavorites = () => {
-  favorites.value = storageService.getFavorites()
-}
+// 表格列配置
+const tableColumns = [
+  { prop: 'url', label: $t('table.url'), width: 300 },
+  { prop: 'status', label: $t('table.status'), width: 100, slot: 'status' },
+  { 
+    prop: 'responseTime', 
+    label: $t('table.responseTime'), 
+    width: 120,
+    formatter: (value) => `${value} ms`
+  },
+  { prop: 'contentLength', label: $t('table.contentLength'), width: 120 },
+  { prop: 'contentType', label: $t('table.contentType') }
+]
 
-// 在组件挂载时加载收藏列表
-loadFavorites()
-
-// 格式化文件大小
-const formatSize = (bytes) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+// 获取状态码类型
+const getStatusType = (status) => {
+  if (status >= 200 && status < 300) return 'success'
+  if (status >= 300 && status < 400) return 'warning'
+  if (status >= 400) return 'danger'
+  return 'info'
 }
 
 // 开始测试
 const startTest = async () => {
-  if (!form.urls.trim()) {
-    ElMessage.warning('请输入要测试的URL')
+  const validUrls = urlList.value
+    .map(item => item.url.trim())
+    .filter(url => url)
+  
+  if (validUrls.length === 0) {
+    ElMessage.warning($t('messages.pleaseAddUrl'))
     return
   }
 
   loading.value = true
+  results.value = []
+  
   try {
-    const urls = form.urls.split('\n').filter(url => url.trim())
-    // TODO: 调用后端API进行测试
-    // 模拟测试结果
-    results.value = urls.map(url => ({
-      url,
-      statusCode: 200,
-      min: 50,
-      avg: 75,
-      max: 100,
-      size: 1024 * 1024 // 1MB
-    }))
+    const tempResults = []
+
+    for (const url of validUrls) {
+      try {
+        console.log('正在测试URL:', url)
+        
+        // 模拟HTTP测试结果
+        const startTime = Date.now()
+        const response = await fetch(url, {
+          method: form.method,
+          signal: AbortSignal.timeout(form.timeout * 1000)
+        })
+        const endTime = Date.now()
+        
+        tempResults.push({
+          url,
+          status: response.status,
+          responseTime: endTime - startTime,
+          contentLength: response.headers.get('content-length') || '-',
+          contentType: response.headers.get('content-type') || '-'
+        })
+      } catch (error) {
+        console.error('测试失败:', error)
+        tempResults.push({
+          url,
+          status: 'Error',
+          responseTime: '-',
+          contentLength: '-',
+          contentType: '-',
+          error: error.message
+        })
+        ElMessage.error(`${$t('messages.testFailed')} ${url}: ${error.message}`)
+      }
+    }
+
+    results.value = tempResults
+    console.log('测试完成，结果:', results.value)
   } catch (error) {
-    ElMessage.error('测试失败：' + error.message)
+    console.error('测试过程出错:', error)
+    ElMessage.error($t('messages.testFailed') + '：' + error.message)
   } finally {
     loading.value = false
   }
@@ -192,46 +217,43 @@ const clearResults = () => {
 // 添加到收藏夹
 const addToFavorites = (url) => {
   try {
-    storageService.addFavorite({ address: url, note: '' })
-    ElMessage.success('已添加到收藏夹')
+    const success = storageService.addFavorite({
+      address: url,
+      note: $t('messages.addedFromPage', { page: $t('pages.httpTest') })
+    })
+    
+    if (success) {
+      ElMessage.success($t('messages.addToFavorites'))
+    } else {
+      ElMessage.warning($t('messages.alreadyInFavorites'))
+    }
   } catch (error) {
-    ElMessage.error('添加失败：' + error.message)
+    console.error('添加收藏失败:', error)
+    ElMessage.error($t('messages.saveFailed') + '：' + error.message)
   }
 }
 
-// 处理收藏夹选择变化
-const handleSelectionChange = (selection) => {
-  selectedFavorites.value = selection
+// 处理收藏夹选择
+const handleFavoritesSelected = (selectedItems) => {
+  selectedItems.forEach(item => {
+    urlList.value.push({
+      id: Date.now() + Math.random(),
+      url: item.address
+    })
+  })
 }
 
-// 添加选中的收藏到输入框
-const addSelectedToInput = () => {
-  const currentValue = form.urls.trim()
-  const newUrls = selectedFavorites.value.map(f => f.address).join('\n')
-  form.urls = currentValue ? `${currentValue}\n${newUrls}` : newUrls
-  showFavorites.value = false
+// 处理批量添加
+const handleBatchAdd = (urls) => {
+  urls.forEach(url => {
+    urlList.value.push({
+      id: Date.now() + Math.random(),
+      url
+    })
+  })
 }
 </script>
 
 <style scoped>
-.http {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.results-table {
-  margin-top: 20px;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
+/* 页面特定样式可以在这里添加 */
 </style> 
