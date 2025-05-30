@@ -64,9 +64,9 @@ const setLanguage = (lang) => {
 
 // 更新窗口标题函数
 const updateWindowTitle = () => {
-  const appTitle = currentLanguage.value.startsWith('zh') 
-    ? appInfo.description['zh-CN'].split('-')[0].trim() 
-    : appInfo.name;
+  const appTitle = currentLanguage.value.startsWith('zh')
+    ? appInfo.description['zh-CN'].split('-')[0].trim()
+    : appInfo.name[currentLanguage.value];
   document.title = appTitle;
   console.log('窗口标题已更新:', appTitle);
 }
