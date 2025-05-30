@@ -18,6 +18,7 @@
     "dist:win": "npm run build && electron-builder --win",
     "dist:win:x64": "npm run build && electron-builder --win --x64",
     "dist:win:ia32": "npm run build && electron-builder --win --ia32",
+    "dist:win:arm64": "npm run build && electron-builder --win --arm64",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:mac:x64": "npm run build && electron-builder --mac --x64",
     "dist:mac:arm64": "npm run build && electron-builder --mac --arm64",
@@ -58,7 +59,8 @@
   },
   "build": {
     "appId": "cn.skstudio.multisitetool",
-    "productName": "MultiSiteTool",
+    "productName": "Multi-site Monitor",
+    "icon": "assets/icon",
     "directories": {
       "output": "release"
     },
@@ -87,7 +89,18 @@
       "target": [
         "nsis",
         "portable"
-      ]
+      ],
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "allowElevation": true,
+      "uninstallDisplayName": "MultiSiteTool",
+      "deleteAppDataOnUninstall": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "linux": {
       "target": [
@@ -95,7 +108,8 @@
         "deb",
         "rpm"
       ],
-      "category": "Network"
+      "category": "Network",
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
     },
     "publish": {
       "provider": "generic",

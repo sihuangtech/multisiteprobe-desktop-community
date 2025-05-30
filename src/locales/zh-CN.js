@@ -36,7 +36,8 @@ export default {
     all: '所有',
     services: '个服务',
     allServicesTestFailed: '所有服务测试失败',
-    batchTestFailed: '批量测试失败'
+    batchTestFailed: '批量测试失败',
+    version: '版本'
   },
   
   // 通用按钮
@@ -248,7 +249,6 @@ export default {
     
     // 关于信息
     appName: '应用名称',
-    appNameValue: '多站点延迟测试工具',
     version: '版本',
     buildDate: '构建日期',
     author: '作者',

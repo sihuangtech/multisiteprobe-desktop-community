@@ -33,6 +33,8 @@ export default defineConfig({
     'process.env': {
       IP2LOCATION_API_KEY: JSON.stringify(process.env.IP2LOCATION_API_KEY),
       NODE_ENV: JSON.stringify(process.env.NODE_ENV)
-    }
+    },
+    '__APP_VERSION__': JSON.stringify(process.env.npm_package_version),
+    '__BUILD_DATE__': JSON.stringify(new Date().toISOString())
   }
 }) 

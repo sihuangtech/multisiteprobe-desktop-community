@@ -22,6 +22,10 @@
 // 预加载脚本，用于在渲染器进程中使用Node.js模块
 const { contextBridge, ipcRenderer } = require('electron');
 
+// 从主进程获取版本信息
+const appVersion = process.env.APP_VERSION; // 将在主进程中注入
+const buildDate = process.env.BUILD_DATE; // 将在主进程中注入
+
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
     invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args)
@@ -30,5 +34,7 @@ contextBridge.exposeInMainWorld('electron', {
 
 // 暴露electronAPI给渲染进程
 contextBridge.exposeInMainWorld('electronAPI', {
-  openExternal: (url) => ipcRenderer.invoke('open-external', url)
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  getAppVersion: () => appVersion, // 暴露版本号
+  getBuildDate: () => buildDate // 暴露构建日期
 });

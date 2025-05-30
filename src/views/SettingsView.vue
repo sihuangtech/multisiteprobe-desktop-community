@@ -376,16 +376,16 @@
           
           <el-descriptions :column="3" border>
             <el-descriptions-item :label="$t('settings.appName')">
-              {{ $t('settings.appNameValue') }}
+              {{ currentAppInfo.name }}
             </el-descriptions-item>
-            <el-descriptions-item :label="$t('settings.version')">
-              {{ currentAppInfo.version }}
+            <el-descriptions-item :label="$t('common.version')">
+              <span>{{ appVersion }}</span>
             </el-descriptions-item>
             <el-descriptions-item :label="$t('settings.buildDate')">
-              {{ currentAppInfo.buildDate }}
+              <span>{{ buildDate }}</span>
             </el-descriptions-item>
             <el-descriptions-item :label="$t('settings.author')">
-              {{ getAppAuthor() }}
+              <span>{{ appAuthor }}</span>
             </el-descriptions-item>
             <el-descriptions-item :label="$t('settings.email')">
               <el-link @click="openInBrowser(`mailto:${currentAppInfo.email}`)" type="primary">
@@ -437,23 +437,37 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import storageService from '../services/storage'
 import ipService from '../services/ipService'
-import { getAppInfo, getDescription, getAuthor } from '../config/appInfo'
+import { getAppInfo, getDescription, getAuthor, appInfo, getAppName } from '../config/appInfo'
 
-// 注入国际化服务
+// 注入国际化服务和 i18nService 实例
 const $t = inject('$t')
 const $i18n = inject('$i18n')
 
-// 应用信息
-const currentAppInfo = ref(getAppInfo())
+// 获取应用信息（现在从 i18nService 获取响应式值）
+const appVersion = appInfo.version;
+const buildDate = appInfo.buildDate;
+const appAuthor = computed(() => {
+  // 这里也使用 i18nService 的当前语言来获取作者名字
+  const language = $i18n.getCurrentLanguage();
+  return getAuthor(language);
+});
+
+// 获取当前语言的应用信息 for 'About' section
+const currentAppInfo = computed(() => {
+  // getAppInfo() 现在返回非本地化的基本信息
+  const basicInfo = getAppInfo();
+  // 作者和描述仍然需要根据当前语言获取
+  return {
+    ...basicInfo,
+    name: getAppName($i18n.currentLanguage.value), // 使用 getAppName 获取本地化应用名称
+    author: getAuthor($i18n.getCurrentLanguage()),
+    description: getDescription($i18n.currentLanguage.value)
+  };
+});
 
 // 获取当前语言的应用描述
 const getAppDescription = () => {
   return getDescription($i18n.currentLanguage.value)
-}
-
-// 获取当前语言的作者名字
-const getAppAuthor = () => {
-  return getAuthor($i18n.currentLanguage.value)
 }
 
 // 用默认浏览器打开链接

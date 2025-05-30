@@ -1,7 +1,7 @@
 'use strict';
 
 /*
-  MultiSite Latency Tool
+  Multi-site Operations Monitoring Tool
 
   Copyright (C) 2024 Snake Konginchrist
 
@@ -20,7 +20,7 @@
 */
 
 // 引入Electron模块
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 const Store = require('./electron-store-wrapper');
 const dns = require('dns');
@@ -40,6 +40,7 @@ function createWindow() {
     const mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
+        icon: path.join(__dirname, 'assets/icon.png'), // 设置窗口图标
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -102,6 +103,9 @@ function createWindow() {
 app.whenReady().then(() => {
     console.log('App is ready')
     createWindow()
+
+    // 移除默认菜单栏
+    Menu.setApplicationMenu(null);
 
     app.on('activate', function () {
         console.log('App activated')

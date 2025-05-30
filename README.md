@@ -1,6 +1,6 @@
-# MultiSiteLatencyTool (多站点延迟测试工具)
+# Multi-site Operations Monitoring Tool (多站点运维检测工具)
 
-一个基于 Electron + Vue3 的多功能网络测试工具，用于测量多个网站的延迟并获取 IP 地理位置信息。
+一个基于 Electron + Vue3 的多功能网络测试工具，用于测量多个网站的延迟、获取 IP 地理位置信息以及提供运维检测功能。
 
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
@@ -54,6 +54,10 @@ cd MultiSiteLatencyTool
 npm install
 ```
 
+> 💡 **开发说明**: 
+> - 项目默认忽略 `package-lock.json` 文件，不会被Git跟踪
+> - 安装时可能会有一些可选依赖的警告，这些通常可以忽略
+
 ### 3. 配置环境变量
 创建 `.env` 文件并配置API密钥：
 ```bash
@@ -100,6 +104,7 @@ npm run dist:linux  # Linux (所有架构)
 # Windows
 npm run dist:win:x64        # Windows 64位
 npm run dist:win:ia32       # Windows 32位
+npm run dist:win:arm64      # Windows ARM64
 
 # macOS
 npm run dist:mac:x64        # macOS Intel (x64)
@@ -122,6 +127,11 @@ npm run dist:linux:unsigned # Linux 不签名构建
 > - **不签名构建**：使用 `unsigned` 版本，不显示开发者信息，适合开发测试
 > - **macOS**：签名的应用提供更好的用户体验，减少安全警告
 > - **Windows**：签名的应用避免 SmartScreen 警告，提高用户信任度
+> 
+> 💡 **关于Windows安装程序**：
+> - 项目使用NSIS创建自定义安装程序，支持用户选择安装位置
+> - 卸载时会彻底清理应用数据，避免残留
+> - 支持x64、ia32和ARM64三种架构
 
 ## 📖 功能使用指南
 

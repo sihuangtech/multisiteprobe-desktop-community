@@ -1,6 +1,6 @@
-# MultiSiteLatencyTool
+# Multi-site Operations Monitoring Tool
 
-A multi-functional network testing tool based on Electron + Vue3 for measuring latency of multiple websites and obtaining IP geolocation information.
+A multi-functional network testing tool based on Electron + Vue3 for measuring latency of multiple websites, obtaining IP geolocation information, and providing operations monitoring functions.
 
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
@@ -54,6 +54,10 @@ cd MultiSiteLatencyTool
 npm install
 ```
 
+> 💡 **Development Notes**: 
+> - The project ignores `package-lock.json` file by default, it will not be tracked by Git
+> - You may see warnings about optional dependencies during installation, these can usually be ignored
+
 ### 3. Configure environment variables
 Create a `.env` file and configure API key:
 ```bash
@@ -103,6 +107,7 @@ npm run dist:linux  # Linux (all architectures)
 # Windows
 npm run dist:win:x64        # Windows 64-bit
 npm run dist:win:ia32       # Windows 32-bit
+npm run dist:win:arm64      # Windows ARM64
 
 # macOS
 npm run dist:mac:x64        # macOS Intel (x64)
@@ -125,6 +130,11 @@ npm run dist:linux:unsigned # Linux unsigned build
 > - **Unsigned builds**: Use `unsigned` versions, no developer information shown, suitable for development testing
 > - **macOS**: Signed apps provide better user experience with fewer security warnings
 > - **Windows**: Signed apps avoid SmartScreen warnings and increase user trust
+>
+> 💡 **About Windows Installer**：
+> - The project uses NSIS to create custom installers that allow users to choose installation location
+> - Uninstallation will thoroughly clean up application data to avoid residual files
+> - Supports x64, ia32, and ARM64 architectures
 
 ## 📖 Feature Usage Guide
 

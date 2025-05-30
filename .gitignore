@@ -1,6 +1,7 @@
 # 依赖目录
 node_modules/
 vendor/
+package-lock.json
 
 # 构建输出
 dist/

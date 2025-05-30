@@ -36,7 +36,8 @@ export default {
     all: 'All',
     services: ' services',
     allServicesTestFailed: 'All services test failed',
-    batchTestFailed: 'Batch test failed'
+    batchTestFailed: 'Batch test failed',
+    version: 'Version'
   },
   
   // Common buttons
@@ -248,7 +249,6 @@ export default {
     
     // About information
     appName: 'Application Name',
-    appNameValue: 'MultiSite Latency Tool',
     version: 'Version',
     buildDate: 'Build Date',
     author: 'Author',

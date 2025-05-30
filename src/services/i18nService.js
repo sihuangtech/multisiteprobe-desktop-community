@@ -2,6 +2,7 @@ import { ref, reactive } from 'vue'
 import zhCN from '../locales/zh-CN.js'
 import enUS from '../locales/en-US.js'
 import storageService from './storage.js'
+import { appInfo } from '../config/appInfo'
 
 // 语言包
 const messages = {
@@ -11,6 +12,10 @@ const messages = {
 
 // 当前语言
 const currentLanguage = ref('zh-CN')
+
+// 应用版本和构建日期
+const appVersion = ref('未知版本')
+const buildDate = ref('未知构建日期')
 
 // 当前主题
 const currentTheme = ref('light')
@@ -50,8 +55,20 @@ const setLanguage = (lang) => {
     // 更新HTML lang属性
     document.documentElement.lang = lang
     
+    // 更新窗口标题
+    updateWindowTitle()
+    
     console.log('语言已切换到:', lang)
   }
+}
+
+// 更新窗口标题函数
+const updateWindowTitle = () => {
+  const appTitle = currentLanguage.value.startsWith('zh') 
+    ? appInfo.description['zh-CN'].split('-')[0].trim() 
+    : appInfo.name;
+  document.title = appTitle;
+  console.log('窗口标题已更新:', appTitle);
 }
 
 // 设置主题
@@ -110,7 +127,7 @@ const getAvailableThemes = () => {
 }
 
 // 初始化
-const init = () => {
+const init = async () => {
   // 从本地存储加载设置
   const uiSettings = storageService.getSettings('ui') || {}
   
@@ -121,6 +138,20 @@ const init = () => {
   // 设置主题
   const savedTheme = uiSettings.theme || 'light'
   setTheme(savedTheme)
+
+  // 获取应用版本和构建日期（确保在 Electron 环境下）
+  if (window.electronAPI) {
+    try {
+      appVersion.value = await window.electronAPI.getAppVersion();
+      buildDate.value = await window.electronAPI.getBuildDate();
+      console.log('获取到应用版本:', appVersion.value);
+      console.log('获取到构建日期:', buildDate.value);
+    } catch (error) {
+      console.error('获取应用版本或构建日期失败:', error);
+    }
+  } else {
+    console.warn('非 Electron 环境，无法获取应用版本和构建日期');
+  }
 }
 
 export default {
@@ -133,5 +164,7 @@ export default {
   getAvailableThemes,
   init,
   currentLanguage,
-  currentTheme
+  currentTheme,
+  appVersion, // 暴露给其他组件
+  buildDate // 暴露给其他组件
 } 

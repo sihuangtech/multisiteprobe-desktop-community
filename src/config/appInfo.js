@@ -1,8 +1,9 @@
 // 应用信息配置
 export const appInfo = {
-  name: 'MultiSite Latency Tool',
-  version: '1.0.0',
-  buildDate: '2025-05-29',
+  name: {
+    'zh-CN': '多站点运维检测工具', // 应用名称（中文）
+    'en-US': 'Multi-site Operations Monitoring Tool' // 应用名称（英文）
+  },
   author: {
     'zh-CN': '斯黄',
     'en-US': 'Snake Konginchrist'
@@ -24,14 +25,23 @@ export const appInfo = {
   },
   // 应用描述（支持国际化）
   description: {
-    'zh-CN': '多站点延迟测试工具 - 提供IP查询、Ping、HTTP、DNS、MTR、路由追踪等网络测试功能',
-    'en-US': 'Multi-Site Latency Tool - Provides IP lookup, Ping, HTTP, DNS, MTR, Traceroute and other network testing features'
-  }
+    'zh-CN': '多站点运维检测工具 - 提供IP查询、Ping、HTTP、DNS、MTR、路由追踪等网络测试以及运维检测功能',
+    'en-US': 'Multi-site Operations Monitoring Tool - Provides IP lookup, Ping, HTTP, DNS, MTR, Traceroute and other network testing and operations monitoring features'
+  },
+  // 直接使用全局注入的版本和构建日期
+  version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '未知版本',
+  buildDate: typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : '未知构建日期'
 }
 
 // 获取应用信息
 export const getAppInfo = () => {
-  return { ...appInfo }
+  // 直接返回 appInfo 对象
+  return appInfo;
+}
+
+// 获取应用名称（根据语言）
+export const getAppName = (language = 'zh-CN') => {
+  return appInfo.name[language] || appInfo.name['zh-CN']
 }
 
 // 获取应用描述（根据语言）
@@ -46,7 +56,8 @@ export const getAuthor = (language = 'zh-CN') => {
 
 // 获取版本信息
 export const getVersion = () => {
-  return appInfo.version
+  // 直接返回 appInfo 中的版本
+  return appInfo.version;
 }
 
 // 获取构建信息
