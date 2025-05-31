@@ -69,17 +69,17 @@
           <el-table-column prop="hostname" :label="$t('table.hostname')" min-width="200" />
           <el-table-column prop="rtt1" label="RTT1" width="100">
             <template #default="{ row }">
-              {{ row.rtt1 }} ms
+              {{ row.rtt1 }}
             </template>
           </el-table-column>
           <el-table-column prop="rtt2" label="RTT2" width="100">
             <template #default="{ row }">
-              {{ row.rtt2 }} ms
+              {{ row.rtt2 }}
             </template>
           </el-table-column>
           <el-table-column prop="rtt3" label="RTT3" width="100">
             <template #default="{ row }">
-              {{ row.rtt3 }} ms
+              {{ row.rtt3 }}
             </template>
           </el-table-column>
           <el-table-column prop="location" :label="$t('table.location')" width="200" />
@@ -120,6 +120,9 @@ import {
 // 注入国际化服务
 const $t = inject('$t')
 
+// 从 preload 脚本暴露的 API 中获取 invoke 方法
+const { invoke } = window.electronAPI || {};
+
 // 地址列表
 const addressList = ref([
   { id: Date.now(), address: '' }
@@ -127,8 +130,8 @@ const addressList = ref([
 
 // 表单数据
 const form = reactive({
-  maxHops: 30,
-  timeout: 5,
+  maxHops: 15,
+  timeout: 2,
   packetSize: 64
 })
 
@@ -157,38 +160,41 @@ const startTest = async () => {
 
     for (const address of validAddresses) {
       try {
-        console.log('正在追踪路由:', address)
+        console.log('正在追踪路由:', address);
         
-        // 模拟路由追踪结果
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 3000 + 2000))
-        
-        const hops = []
-        const hopCount = Math.floor(Math.random() * 15) + 5
-        
-        for (let i = 1; i <= hopCount; i++) {
-          hops.push({
-            hop: i,
-            ip: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-            hostname: i === hopCount ? address : `hop${i}.example.com`,
-            rtt1: Math.floor(Math.random() * 100) + 10,
-            rtt2: Math.floor(Math.random() * 100) + 10,
-            rtt3: Math.floor(Math.random() * 100) + 10,
-            location: `Location ${i}`
-          })
+        // 使用 IPC 调用主进程执行路由追踪测试
+        if (invoke) {
+          // 将 reactive 对象转换为普通对象
+          const formData = {
+            maxHops: form.maxHops,
+            timeout: form.timeout,
+            packetSize: form.packetSize
+          };
+          
+          const result = await invoke('traceroute-test', address, formData);
+          
+          if (result.success) {
+            tempResults.push({
+              target: result.target,
+              hops: result.hops
+            });
+          } else {
+            throw new Error(result.error || '执行路由追踪测试失败');
+          }
+        } else {
+          console.error('invoke 方法未定义，无法执行路由追踪测试');
+          ElMessage.error($t('messages.ipcRendererUndefined'));
+          break; // 如果 invoke 未定义，停止测试
         }
         
-        tempResults.push({
-          target: address,
-          hops
-        })
       } catch (error) {
-        console.error('测试失败:', error)
-        ElMessage.error(`${$t('messages.testFailed')} ${address}: ${error.message}`)
+        console.error('路由追踪测试失败:', address, error);
+        ElMessage.error(`${$t('messages.testFailed')} ${address}: ${error.message}`);
       }
     }
 
-    results.value = tempResults
-    console.log('测试完成，结果:', results.value)
+    results.value = tempResults;
+    console.log('路由追踪测试完成，结果:', results.value);
   } catch (error) {
     console.error('测试过程出错:', error)
     ElMessage.error($t('messages.testFailed') + '：' + error.message)

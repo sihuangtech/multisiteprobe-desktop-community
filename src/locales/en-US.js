@@ -253,7 +253,6 @@ export default {
     buildDate: 'Build Date',
     author: 'Author',
     email: 'Email',
-    license: 'Open Source License',
     homepage: 'Product Homepage',
     repository: 'Project Repository',
     bugReports: 'Bug Reports'

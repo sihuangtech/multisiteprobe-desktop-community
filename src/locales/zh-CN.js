@@ -253,7 +253,6 @@ export default {
     buildDate: '构建日期',
     author: '作者',
     email: '邮箱',
-    license: '开源协议',
     homepage: '产品主页',
     repository: '项目地址',
     bugReports: '问题反馈'

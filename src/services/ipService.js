@@ -6,7 +6,8 @@ import storageService from './storage'
 
 class IpService {
   constructor() {
-    this.isElectron = window.electron && window.electron.ipcRenderer
+    // 判断是否在 Electron 环境，依赖 preload.js 暴露的 electronAPI
+    this.isElectron = typeof window !== 'undefined' && window.electronAPI;
   }
 
   /**
@@ -15,30 +16,32 @@ class IpService {
    * @param {Object} customSettings - 自定义设置（可选）
    */
   async lookupIpLocation(ip, customSettings = null) {
-    if (!this.isElectron) {
-      throw new Error('此功能需要在Electron环境中运行')
+    if (!this.isElectron || !window.electronAPI.invoke) {
+      // 如果不在 Electron 环境或者 invoke 方法未暴露，则抛出错误
+      throw new Error('此功能需要在Electron环境中运行');
     }
 
     try {
       // 获取用户设置
-      let settings = customSettings
+      let settings = customSettings;
       if (!settings) {
-        const apiSettings = storageService.getSettings('api') || {}
+        const apiSettings = storageService.getSettings('api') || {};
         settings = {
           ipLookupService: apiSettings.ipLookupService || 'auto',
           ip2locationApiKey: apiSettings.ip2locationApiKey || '',
           ipinfoToken: apiSettings.ipinfoToken || '',
           ipLookupTimeout: apiSettings.ipLookupTimeout || 8
-        }
+        };
       }
 
-      console.log('使用设置查询IP地理位置:', { ip, service: settings.ipLookupService })
-      
-      const result = await window.electron.ipcRenderer.invoke('ip2location-lookup', ip, settings)
-      return result
+      console.log('使用设置查询IP地理位置:', { ip, service: settings.ipLookupService });
+
+      // 使用新的 IPC 调用方式
+      const result = await window.electronAPI.invoke('ip2location-lookup', ip, settings);
+      return result;
     } catch (error) {
-      console.error('IP地理位置查询失败:', error)
-      throw new Error('IP地理位置查询失败: ' + error.message)
+      console.error('IP地理位置查询失败:', error);
+      throw new Error('IP地理位置查询失败: ' + error.message);
     }
   }
 
@@ -48,48 +51,53 @@ class IpService {
    * @param {Object} customSettings - 自定义设置（可选）
    */
   async batchLookupIpLocation(ips, customSettings = null) {
-    if (!Array.isArray(ips) || ips.length === 0) {
-      throw new Error('IP地址列表不能为空')
+     if (!this.isElectron || !window.electronAPI.invoke) {
+      throw new Error('此功能需要在Electron环境中运行');
     }
 
-    const results = []
-    const errors = []
+    if (!Array.isArray(ips) || ips.length === 0) {
+      throw new Error('IP地址列表不能为空');
+    }
+
+    const results = [];
+    const errors = [];
 
     // 获取并发限制设置
-    const networkSettings = storageService.getSettings('network') || {}
-    const maxConcurrency = networkSettings.maxConcurrency || 5
+    const networkSettings = storageService.getSettings('network') || {};
+    const maxConcurrency = networkSettings.maxConcurrency || 5;
 
     // 分批处理
     for (let i = 0; i < ips.length; i += maxConcurrency) {
-      const batch = ips.slice(i, i + maxConcurrency)
+      const batch = ips.slice(i, i + maxConcurrency);
       const batchPromises = batch.map(async (ip, index) => {
         try {
-          const result = await this.lookupIpLocation(ip, customSettings)
+          // 使用新的 IPC 调用方式
+          const result = await window.electronAPI.invoke('ip2location-lookup', ip, customSettings);
           return {
             index: i + index,
             ip,
             success: true,
             data: result
-          }
+          };
         } catch (error) {
           return {
             index: i + index,
             ip,
             success: false,
             error: error.message
-          }
+          };
         }
-      })
+      });
 
-      const batchResults = await Promise.all(batchPromises)
-      
+      const batchResults = await Promise.all(batchPromises);
+
       batchResults.forEach(result => {
         if (result.success) {
-          results.push(result)
+          results.push(result);
         } else {
-          errors.push(result)
+          errors.push(result);
         }
-      })
+      });
     }
 
     return {
@@ -98,7 +106,7 @@ class IpService {
       total: ips.length,
       success: results.length,
       failed: errors.length
-    }
+    };
   }
 
   /**

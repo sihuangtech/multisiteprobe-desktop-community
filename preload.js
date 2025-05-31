@@ -26,15 +26,42 @@ const { contextBridge, ipcRenderer } = require('electron');
 const appVersion = process.env.APP_VERSION; // 将在主进程中注入
 const buildDate = process.env.BUILD_DATE; // 将在主进程中注入
 
-contextBridge.exposeInMainWorld('electron', {
-  ipcRenderer: {
-    invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args)
-  }
-});
-
 // 暴露electronAPI给渲染进程
 contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getAppVersion: () => appVersion, // 暴露版本号
-  getBuildDate: () => buildDate // 暴露构建日期
+  getBuildDate: () => buildDate, // 暴露构建日期
+
+  // 安全地暴露 ipcRenderer.invoke，只允许特定的通道
+  invoke: async (channel, ...args) => {
+    const validChannels = [
+      'resolve-dns',
+      'open-external',
+      'ping-test',
+      'ip2location-lookup',
+      'mtr-test',
+      'traceroute-test',
+      'check-mtr-status'
+    ];
+    if (validChannels.includes(channel)) {
+      try {
+        // 调用 IPC 通道
+        const result = await ipcRenderer.invoke(channel, ...args);
+        
+        // 通过 JSON 序列化和反序列化过滤掉不可克隆的对象
+        try {
+          const serialized = JSON.stringify(result);
+          const parsed = JSON.parse(serialized);
+          return parsed;
+        } catch (serError) {
+          throw new Error('结果序列化失败: ' + serError.message);
+        }
+      } catch (error) {
+        // 确保错误也是可克隆的
+        return Promise.reject(new Error(String(error)));
+      }
+    } else {
+      return Promise.reject(new Error(`未允许的 IPC 通道: ${channel}`));
+    }
+  }
 });

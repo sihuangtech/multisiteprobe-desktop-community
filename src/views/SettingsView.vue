@@ -39,10 +39,9 @@
                 <el-option 
                   label="IP2Location (付费)" 
                   value="ip2location"
-                  :disabled="!apiSettings.ip2locationApiKey"
+                  :disabled="false"
                 >
                   <span>IP2Location ({{ $t('common.paid') || '付费' }})</span>
-                  <span v-if="!apiSettings.ip2locationApiKey" style="float: right; color: #f56c6c; font-size: 12px;">{{ $t('common.apiKeyRequired') || '需要API密钥' }}</span>
                 </el-option>
                 <el-option 
                   label="IPInfo.io (免费/付费)" 
@@ -392,33 +391,10 @@
                 {{ currentAppInfo.email }}
               </el-link>
             </el-descriptions-item>
-            <el-descriptions-item :label="$t('settings.license')">
-              {{ currentAppInfo.license }}
-            </el-descriptions-item>
             <el-descriptions-item :label="$t('settings.homepage')">
               <el-link @click="openInBrowser(currentAppInfo.homepage)" type="primary">
                 {{ currentAppInfo.homepage }}
               </el-link>
-            </el-descriptions-item>
-            <el-descriptions-item :label="$t('settings.repository')">
-              <div class="repository-links">
-                <el-link @click="openInBrowser(currentAppInfo.repository.github)" type="primary" style="margin-right: 10px">
-                  GitHub
-                </el-link>
-                <el-link @click="openInBrowser(currentAppInfo.repository.gitee)" type="primary">
-                  Gitee
-                </el-link>
-              </div>
-            </el-descriptions-item>
-            <el-descriptions-item :label="$t('settings.bugReports')">
-              <div class="repository-links">
-                <el-link @click="openInBrowser(currentAppInfo.bugReports.github)" type="primary" style="margin-right: 10px">
-                  GitHub Issues
-                </el-link>
-                <el-link @click="openInBrowser(currentAppInfo.bugReports.gitee)" type="primary">
-                  Gitee Issues
-                </el-link>
-              </div>
             </el-descriptions-item>
           </el-descriptions>
           

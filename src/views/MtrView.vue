@@ -10,6 +10,91 @@
       />
     </template>
 
+    <!-- MTR 工具状态显示 -->
+    <el-card class="mtr-status-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span>MTR 工具状态</span>
+          <el-button 
+            type="primary" 
+            size="small" 
+            @click="checkMtrStatus"
+            :loading="statusLoading"
+          >
+            刷新状态
+          </el-button>
+        </div>
+      </template>
+      
+      <div class="status-content">
+        <div v-if="mtrStatus.status === 'ready'" class="status-item status-ready">
+          <div class="status-title">
+            <el-icon><SuccessFilled /></el-icon>
+            <span>MTR 工具已安装且可用</span>
+          </div>
+        </div>
+        
+        <div v-else-if="mtrStatus.status === 'permission_required'" class="status-item status-warning">
+          <div class="status-details">
+            <div class="status-title">
+              <el-icon><WarningFilled /></el-icon>
+              <span>MTR 工具已安装，但需要管理员权限</span>
+            </div>
+            <div class="status-solutions">
+              <div class="solution-title">💡 解决方案：</div>
+              <div class="solution-item">
+                <strong>1. 设置权限：</strong>
+                <code class="command-code">{{ mtrStatus.permissionSolution }}</code>
+              </div>
+              <div class="solution-item">
+                <strong>2. 或者使用路由追踪功能作为替代</strong>
+              </div>
+              <div class="solution-item manual-run">
+                <strong>3. 手动运行：</strong>
+                <code class="command-code">sudo mtr 目标地址</code>
+                <span v-if="$platform === 'darwin'">（推荐在终端中手动运行）</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div v-else-if="mtrStatus.status === 'not_installed'" class="status-item status-error">
+          <div class="status-details">
+            <div class="status-title">
+              <el-icon><CircleCloseFilled /></el-icon>
+              <span>MTR 工具未安装</span>
+            </div>
+            <div class="status-solutions">
+              <div class="solution-title">📦 安装方法：</div>
+              <div v-if="mtrStatus.installInstructions && mtrStatus.installInstructions.includes('|')" class="install-methods">
+                <div 
+                  v-for="(method, index) in mtrStatus.installInstructions.split(' | ')" 
+                  :key="index" 
+                  class="solution-item"
+                >
+                  <strong>{{ method.split(':')[0] }}:</strong>
+                  <code class="command-code">{{ method.split(':')[1]?.trim() || method }}</code>
+                </div>
+              </div>
+              <div v-else class="solution-item">
+                <code class="command-code">{{ mtrStatus.installInstructions }}</code>
+              </div>
+              <div class="solution-item manual-run">
+                <strong>💡 提示：</strong>安装后可能需要重启应用程序
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div v-else class="status-item status-loading">
+          <div class="status-title">
+            <el-icon><Loading /></el-icon>
+            <span>正在检查 MTR 工具状态...</span>
+          </div>
+        </div>
+      </div>
+    </el-card>
+
     <!-- 输入区域 -->
     <AddressInputList
       v-model="addressList"
@@ -111,8 +196,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, inject } from 'vue'
+import { ref, reactive, inject, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { SuccessFilled, WarningFilled, CircleCloseFilled, Loading } from '@element-plus/icons-vue'
 import storageService from '../services/storage'
 import {
   PageContainer,
@@ -125,6 +211,9 @@ import {
 // 注入国际化服务
 const $t = inject('$t')
 
+// 从 preload 脚本暴露的 API 中获取 invoke 方法
+const { invoke } = window.electronAPI || {};
+
 // 地址列表
 const addressList = ref([
   { id: Date.now(), address: '' }
@@ -133,8 +222,8 @@ const addressList = ref([
 // 表单数据
 const form = reactive({
   packetSize: 64,
-  count: 10,
-  maxHops: 30
+  count: 5,
+  maxHops: 15
 })
 
 // 状态变量
@@ -142,6 +231,8 @@ const loading = ref(false)
 const results = ref([])
 const showFavorites = ref(false)
 const showBatchAdd = ref(false)
+const statusLoading = ref(false)
+const mtrStatus = ref({ status: 'checking' })
 
 // 开始测试
 const startTest = async () => {
@@ -162,39 +253,47 @@ const startTest = async () => {
 
     for (const address of validAddresses) {
       try {
-        console.log('正在测试地址:', address)
+        console.log('正在对', address, '执行MTR测试');
         
-        // 模拟MTR测试结果
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000))
-        
-        const hops = []
-        const hopCount = Math.floor(Math.random() * 15) + 5
-        
-        for (let i = 1; i <= hopCount; i++) {
-          hops.push({
-            hop: i,
-            ip: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-            hostname: i === hopCount ? address : `hop${i}.example.com`,
-            loss: Math.floor(Math.random() * 5),
-            avg: Math.floor(Math.random() * 100) + 10,
-            min: Math.floor(Math.random() * 50) + 5,
-            max: Math.floor(Math.random() * 150) + 20,
-            location: `Location ${i}`
-          })
+        // 使用 IPC 调用主进程执行 MTR 测试
+        if (invoke) {
+          // 将 reactive 对象转换为普通对象
+          const formData = {
+            packetSize: form.packetSize,
+            count: form.count,
+            maxHops: form.maxHops
+          };
+          
+          const result = await invoke('mtr-test', address, formData);
+          
+          if (result && result.success) {
+            tempResults.push({
+              target: result.target,
+              hops: result.hops
+            });
+          } else {
+            throw new Error(result ? result.error : '执行 MTR 测试失败');
+          }
+        } else {
+          console.error('invoke 方法未定义，无法执行 MTR 测试');
+          ElMessage.error($t('messages.ipcRendererUndefined'));
+          break;
         }
         
-        tempResults.push({
-          target: address,
-          hops
-        })
       } catch (error) {
-        console.error('测试失败:', error)
-        ElMessage.error(`${$t('messages.testFailed')} ${address}: ${error.message}`)
+        console.error('MTR测试失败:', address, error);
+        
+        // 如果是权限问题，自动刷新状态检测
+        if (error.message && error.message.includes('管理员权限')) {
+          await checkMtrStatus();
+        }
+        
+        ElMessage.error(`${$t('messages.testFailed')} ${address}: ${error.message}`);
       }
     }
 
-    results.value = tempResults
-    console.log('测试完成，结果:', results.value)
+    results.value = tempResults;
+    console.log('MTR测试完成，结果:', results.value);
   } catch (error) {
     console.error('测试过程出错:', error)
     ElMessage.error($t('messages.testFailed') + '：' + error.message)
@@ -246,6 +345,28 @@ const handleBatchAdd = (addresses) => {
     })
   })
 }
+
+// 检查 MTR 工具状态
+const checkMtrStatus = async () => {
+  statusLoading.value = true
+  try {
+    const result = await invoke('check-mtr-status')
+    mtrStatus.value = result
+  } catch (error) {
+    console.error('检查 MTR 工具状态失败:', error)
+    mtrStatus.value = { 
+      status: 'error', 
+      error: error.message 
+    }
+  } finally {
+    statusLoading.value = false
+  }
+}
+
+// 组件挂载时检查状态
+onMounted(() => {
+  checkMtrStatus()
+})
 </script>
 
 <style scoped>
@@ -260,5 +381,83 @@ const handleBatchAdd = (addresses) => {
 .result-item h4 {
   margin-bottom: 10px;
   color: #409EFF;
+}
+
+.mtr-status-card {
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-content {
+  padding: 10px;
+}
+
+.status-item {
+  margin-bottom: 10px;
+}
+
+.status-ready {
+  color: #67C23A;
+}
+
+.status-warning {
+  color: #E6A23C;
+}
+
+.status-error {
+  color: #F56C6C;
+}
+
+.status-loading {
+  color: #909399;
+}
+
+.status-help {
+  margin-top: 5px;
+  font-size: 0.8em;
+}
+
+.status-details {
+  margin-top: 5px;
+}
+
+.status-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-solutions {
+  margin-top: 5px;
+}
+
+.solution-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.solution-item {
+  margin-bottom: 5px;
+}
+
+.command-code {
+  background-color: #f0f0f0;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.manual-run {
+  color: #909399;
+}
+
+.install-methods {
+  margin-top: 5px;
 }
 </style> 

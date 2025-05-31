@@ -9,20 +9,7 @@ export const appInfo = {
     'en-US': 'Snake Konginchrist'
   },
   email: 'developer@skstudio.cn',
-  license: 'GPL-3.0 License',
-  repository: {
-    github: 'https://github.com/Snake-Konginchrist/MultiSiteTool-Desktop',
-    gitee: 'https://gitee.com/Snake-Konginchrist/MultiSiteTool-Desktop'
-  },
   homepage: 'https://www.skstudio.cn/multisitetool',
-  bugReports: {
-    github: 'https://github.com/Snake-Konginchrist/MultiSiteTool-Desktop/issues',
-    gitee: 'https://gitee.com/Snake-Konginchrist/MultiSiteTool-Desktop/issues'
-  },
-  documentation: {
-    github: 'https://github.com/Snake-Konginchrist/MultiSiteTool-Desktop/wiki',
-    gitee: 'https://gitee.com/Snake-Konginchrist/MultiSiteTool-Desktop/wiki'
-  },
   // 应用描述（支持国际化）
   description: {
     'zh-CN': '多站点运维检测工具 - 提供IP查询、Ping、HTTP、DNS、MTR、路由追踪等网络测试以及运维检测功能',
