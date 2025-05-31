@@ -64,7 +64,8 @@
       "main.js",
       "preload.js",
       "package.json",
-      "electron-store-wrapper.js"
+      "electron-store-wrapper.js",
+      "src/**/*"
     ],
     "extraResources": [
       {

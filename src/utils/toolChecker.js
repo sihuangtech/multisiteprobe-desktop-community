@@ -9,18 +9,56 @@ const execAsync = promisify(exec);
  */
 async function checkMtrStatus() {
     try {
-        const checkCmd = process.platform === 'win32' ? 'where mtr' : 'which mtr';
+        let mtrPath = '';
         
-        // 检查 MTR 是否安装
-        const { stdout: mtrPath } = await execAsync(checkCmd);
-        console.log('MTR 安装路径:', mtrPath.trim());
+        if (process.platform === 'win32') {
+            // Windows 系统
+            const checkCmd = 'where mtr';
+            const { stdout } = await execAsync(checkCmd);
+            mtrPath = stdout.trim();
+        } else {
+            // macOS/Linux 系统，尝试多个可能的路径
+            const possiblePaths = [
+                '/opt/homebrew/sbin/mtr',  // Apple Silicon Mac Homebrew
+                '/usr/local/sbin/mtr',     // Intel Mac Homebrew
+                '/usr/sbin/mtr',           // 系统安装
+                '/usr/bin/mtr',            // 系统安装
+                '/usr/local/bin/mtr'       // 其他安装方式
+            ];
+            
+            // 首先尝试 which 命令
+            try {
+                const { stdout } = await execAsync('which mtr');
+                mtrPath = stdout.trim();
+                console.log('通过 which 找到 MTR:', mtrPath);
+            } catch (whichError) {
+                console.log('which 命令未找到 MTR，尝试检查常见路径...');
+                
+                // 如果 which 失败，检查常见路径
+                for (const path of possiblePaths) {
+                    try {
+                        await execAsync(`test -f "${path}"`);
+                        mtrPath = path;
+                        console.log('在路径找到 MTR:', path);
+                        break;
+                    } catch (testError) {
+                        // 继续检查下一个路径
+                    }
+                }
+            }
+        }
+        
+        if (!mtrPath) {
+            throw new Error('MTR not found in any common locations');
+        }
+        
+        console.log('MTR 安装路径:', mtrPath);
         
         // MTR 已安装，检查是否有权限
         // 检查 MTR 文件是否有 setuid 权限
         try {
-            // 获取 MTR 的实际路径和权限
-            const { stdout: mtrPath } = await execAsync(`which mtr`);
-            const { stdout: permissions } = await execAsync(`ls -la ${mtrPath.trim()}`);
+            // 获取 MTR 的权限信息
+            const { stdout: permissions } = await execAsync(`ls -la "${mtrPath}"`);
             console.log('MTR 文件权限:', permissions);
             
             // 如果是符号链接，获取实际文件的权限
@@ -35,7 +73,7 @@ async function checkMtrStatus() {
                     realPath = linkTarget;
                 } else {
                     // 相对路径，需要基于符号链接的目录构建
-                    const linkDir = mtrPath.trim().substring(0, mtrPath.trim().lastIndexOf('/'));
+                    const linkDir = mtrPath.substring(0, mtrPath.lastIndexOf('/'));
                     realPath = `${linkDir}/${linkTarget}`;
                 }
                 
@@ -49,7 +87,8 @@ async function checkMtrStatus() {
                     return {
                         installed: true,
                         hasPermission: true,
-                        status: 'ready'
+                        status: 'ready',
+                        path: mtrPath
                     };
                 } else {
                     console.log('MTR 需要管理员权限');
@@ -57,6 +96,7 @@ async function checkMtrStatus() {
                         installed: true,
                         hasPermission: false,
                         status: 'permission_required',
+                        path: mtrPath,
                         permissionSolution: getPermissionSolution()
                     };
                 }
@@ -67,7 +107,8 @@ async function checkMtrStatus() {
                     return {
                         installed: true,
                         hasPermission: true,
-                        status: 'ready'
+                        status: 'ready',
+                        path: mtrPath
                     };
                 } else {
                     console.log('MTR 需要管理员权限');
@@ -75,6 +116,7 @@ async function checkMtrStatus() {
                         installed: true,
                         hasPermission: false,
                         status: 'permission_required',
+                        path: mtrPath,
                         permissionSolution: getPermissionSolution()
                     };
                 }
@@ -85,6 +127,7 @@ async function checkMtrStatus() {
                 installed: true,
                 hasPermission: false,
                 status: 'permission_required',
+                path: mtrPath,
                 permissionSolution: getPermissionSolution()
             };
         }

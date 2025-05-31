@@ -6,7 +6,7 @@ const path = require('path');
 const Store = require('./electron-store-wrapper');
 
 // 引入工具模块
-const ipcHandlers = require('./src/utils/ipcHandlers');
+const ipcHandlers = require(path.join(__dirname, 'src/utils/ipcHandlers'));
 
 // 创建窗口的函数
 function createWindow() {

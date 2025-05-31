@@ -5,6 +5,7 @@
 
 const { exec } = require('child_process');
 const { batchQueryIPLocations } = require('./ipLocationService');
+const { checkMtrStatus } = require('./toolChecker');
 
 /**
  * 执行 MTR 测试
@@ -16,16 +17,26 @@ async function executeMtrTest(address, options) {
     const { count = 5, packetSize = 64, maxHops = 15 } = options;
 
     try {
+        // 首先检查 MTR 状态
+        const mtrStatus = await checkMtrStatus();
+        if (!mtrStatus.installed) {
+            throw new Error(`MTR 未安装。安装方法: ${mtrStatus.installInstructions}`);
+        }
+        
+        // 获取 MTR 的完整路径
+        const mtrPath = mtrStatus.path || 'mtr';
+        console.log('使用 MTR 路径:', mtrPath);
+        
         // 根据操作系统构建 MTR 命令
         let cmd;
         
         if (process.platform === 'win32') {
-            cmd = `mtr -r -c ${count} -s ${packetSize} --no-dns ${address}`;
+            cmd = `"${mtrPath}" -r -c ${count} -s ${packetSize} --no-dns ${address}`;
         } else if (process.platform === 'darwin') {
             // macOS 使用 osascript 弹出图形化密码输入窗口
-            cmd = `osascript -e 'do shell script "mtr -r -c ${count} -s ${packetSize} -m ${maxHops} -n ${address}" with administrator privileges'`;
+            cmd = `osascript -e 'do shell script "${mtrPath} -r -c ${count} -s ${packetSize} -m ${maxHops} -n ${address}" with administrator privileges'`;
         } else {
-            cmd = `mtr -r -c ${count} -s ${packetSize} -m ${maxHops} -n ${address}`;
+            cmd = `"${mtrPath}" -r -c ${count} -s ${packetSize} -m ${maxHops} -n ${address}`;
         }
         
         console.log('MTR 命令:', cmd);
