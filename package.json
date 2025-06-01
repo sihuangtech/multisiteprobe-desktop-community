@@ -1,7 +1,12 @@
 {
-  "name": "multisitetool",
+  "name": "multi-site-monitor",
   "version": "1.0.0",
-  "description": "一个测量多个网站延迟并获取IP地理位置信息的工具",
+  "description": "A tool for measuring website latency and obtaining IP geolocation information.",
+  "homepage": "https://www.skstudio.cn/multisitetool",
+  "author": {
+    "name": "Snake Konginchrist",
+    "email": "developer@skstudio.cn"
+  },
   "main": "main.js",
   "scripts": {
     "dev": "vite --debug",
@@ -32,7 +37,6 @@
     "dist:linux:unsigned": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false npm run build && electron-builder --linux --publish=never"
   },
   "private": true,
-  "author": "Snake Konginchrist",
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
     "axios": "^1.9.0",
