@@ -170,20 +170,20 @@ const startTest = async () => {
       try {
         console.log('正在测试URL:', url)
         
-        // 模拟HTTP测试结果
-        const startTime = Date.now()
-        const response = await fetch(url, {
+        // 使用 IPC 调用主进程执行 HTTP 测试
+        const result = await window.electronAPI.invoke('http-test', {
+          url,
           method: form.method,
-          signal: AbortSignal.timeout(form.timeout * 1000)
+          timeout: form.timeout * 1000,
+          headers: {}
         })
-        const endTime = Date.now()
         
         tempResults.push({
-          url,
-          status: response.status,
-          responseTime: endTime - startTime,
-          contentLength: response.headers.get('content-length') || '-',
-          contentType: response.headers.get('content-type') || '-'
+          url: result.url,
+          status: result.status,
+          responseTime: result.responseTime,
+          contentLength: result.contentLength,
+          contentType: result.contentType
         })
       } catch (error) {
         console.error('测试失败:', error)

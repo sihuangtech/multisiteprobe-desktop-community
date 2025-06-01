@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'dns-test',
       'open-external',
       'ping-test',
+      'http-test',
       'ip2location-lookup',
       'mtr-test',
       'traceroute-test',

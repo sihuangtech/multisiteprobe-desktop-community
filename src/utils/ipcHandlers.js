@@ -222,6 +222,109 @@ async function handlePingTest(event, options) {
 }
 
 /**
+ * HTTP 测试处理程序
+ */
+async function handleHttpTest(event, options) {
+    const { url, method = 'GET', timeout = 10000, headers = {} } = options;
+    
+    try {
+        const startTime = Date.now();
+        
+        // 处理URL格式，自动添加协议前缀
+        let processedUrl = url.trim();
+        if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
+            // 默认使用https协议
+            processedUrl = 'https://' + processedUrl;
+        }
+        
+        // 解析URL
+        const urlObj = new URL(processedUrl);
+        const isHttps = urlObj.protocol === 'https:';
+        const protocol = isHttps ? https : http;
+        
+        // 构建请求选项
+        const requestOptions = {
+            hostname: urlObj.hostname,
+            port: urlObj.port || (isHttps ? 443 : 80),
+            path: urlObj.pathname + urlObj.search,
+            method: method.toUpperCase(),
+            timeout: timeout,
+            headers: {
+                'User-Agent': 'MultiSiteLatencyTool/1.0',
+                ...headers
+            }
+        };
+        
+        console.log('执行HTTP测试:', { url: processedUrl, method, timeout });
+        
+        return new Promise((resolve, reject) => {
+            const req = protocol.request(requestOptions, (res) => {
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+                
+                // 获取响应头信息
+                const contentLength = res.headers['content-length'] || '-';
+                const contentType = res.headers['content-type'] || '-';
+                
+                // 读取响应体（用于计算大小）
+                let responseData = '';
+                res.on('data', (chunk) => {
+                    responseData += chunk;
+                });
+                
+                res.on('end', () => {
+                    resolve({
+                        url: processedUrl,
+                        method: method.toUpperCase(),
+                        status: res.statusCode,
+                        statusText: res.statusMessage || '',
+                        responseTime,
+                        contentLength: contentLength === '-' ? responseData.length : contentLength,
+                        contentType,
+                        headers: res.headers
+                    });
+                });
+            });
+            
+            req.on('error', (error) => {
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+                
+                console.error('HTTP测试失败:', error);
+                
+                // 如果是HTTPS错误，尝试使用HTTP
+                if (isHttps && (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.code === 'CERT_HAS_EXPIRED')) {
+                    console.log('HTTPS连接失败，尝试HTTP...');
+                    const httpUrl = processedUrl.replace('https://', 'http://');
+                    
+                    // 递归调用，使用HTTP协议
+                    handleHttpTest(event, { ...options, url: httpUrl })
+                        .then(resolve)
+                        .catch(() => {
+                            reject(new Error(`HTTP测试失败: ${error.message}`));
+                        });
+                    return;
+                }
+                
+                reject(new Error(`HTTP测试失败: ${error.message}`));
+            });
+            
+            req.on('timeout', () => {
+                req.destroy();
+                reject(new Error('请求超时'));
+            });
+            
+            // 发送请求
+            req.end();
+        });
+        
+    } catch (error) {
+        console.error('HTTP测试失败:', error);
+        throw new Error(`HTTP测试失败: ${error.message}`);
+    }
+}
+
+/**
  * IP2Location 查询处理程序
  */
 async function handleIp2LocationLookup(event, ip, userSettings = null) {
@@ -601,5 +704,6 @@ module.exports = {
     handleIp2LocationLookup,
     handleCheckMtrStatus,
     handleMtrTest,
-    handleTracerouteTest
+    handleTracerouteTest,
+    handleHttpTest
 };

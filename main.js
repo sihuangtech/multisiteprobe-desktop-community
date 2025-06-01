@@ -106,6 +106,7 @@ ipcMain.handle('resolve-dns', ipcHandlers.handleDnsResolve);
 ipcMain.handle('dns-test', ipcHandlers.handleDnsTest);
 ipcMain.handle('open-external', (event, url) => ipcHandlers.handleOpenExternal(event, url, shell));
 ipcMain.handle('ping-test', ipcHandlers.handlePingTest);
+ipcMain.handle('http-test', ipcHandlers.handleHttpTest);
 ipcMain.handle('ip2location-lookup', ipcHandlers.handleIp2LocationLookup);
 ipcMain.handle('check-mtr-status', ipcHandlers.handleCheckMtrStatus);
 ipcMain.handle('mtr-test', ipcHandlers.handleMtrTest);
