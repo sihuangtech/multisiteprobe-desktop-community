@@ -72,6 +72,9 @@
       <template #loss="{ row }">
         {{ row.loss }}%
       </template>
+      <template #ttl="{ row }">
+        {{ row.ttl }}
+      </template>
     </ResultsTable>
 
     <template #dialogs>
@@ -137,7 +140,7 @@ const tableColumns = [
     slot: 'latency' 
   },
   { prop: 'loss', label: $t('table.loss'), width: 100, slot: 'loss' },
-  { prop: 'ttl', label: $t('table.ttl'), width: 80 }
+  { prop: 'ttl', label: $t('table.ttl'), width: 80, slot: 'ttl' }
 ]
 
 // 开始测试
@@ -161,21 +164,22 @@ const startTest = async () => {
       try {
         console.log('正在Ping测试:', address)
         
-        // 模拟Ping测试结果
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000))
-        
-        const min = Math.floor(Math.random() * 50) + 10
-        const max = min + Math.floor(Math.random() * 100) + 20
-        const avg = Math.floor((min + max) / 2) + Math.floor(Math.random() * 20) - 10
+        // 使用真实的ping测试
+        const result = await window.electronAPI.invoke('ping-test', {
+          host: address,
+          count: form.count,
+          size: form.packetSize,
+          timeout: form.timeout
+        })
         
         tempResults.push({
-          host: address,
-          ip: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-          min,
-          avg,
-          max,
-          loss: Math.floor(Math.random() * 5),
-          ttl: 64 - Math.floor(Math.random() * 10)
+          host: result.host,
+          ip: result.ip,
+          min: result.min,
+          avg: result.avg,
+          max: result.max,
+          loss: result.loss,
+          ttl: result.ttl
         })
       } catch (error) {
         console.error('测试失败:', error)

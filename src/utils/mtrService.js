@@ -20,58 +20,67 @@ async function executeMtrTest(address, options) {
         // 首先检查 MTR 状态
         const mtrStatus = await checkMtrStatus();
         if (!mtrStatus.installed) {
-            throw new Error(`MTR 未安装。安装方法: ${mtrStatus.installInstructions}`);
+            throw new Error(`MTR 工具未安装。安装方法: ${mtrStatus.installInstructions}`);
         }
         
-        // 获取 MTR 的完整路径
-        const mtrPath = mtrStatus.path || 'mtr';
-        console.log('使用 MTR 路径:', mtrPath);
+        // 获取工具的完整路径和类型
+        const toolPath = mtrStatus.path || 'mtr';
+        const toolType = mtrStatus.tool || 'mtr';
+        console.log('使用工具:', toolType, '路径:', toolPath);
         
-        // 根据操作系统构建 MTR 命令
+        // 根据操作系统和工具类型构建命令
         let cmd;
         
         if (process.platform === 'win32') {
-            cmd = `"${mtrPath}" -r -c ${count} -s ${packetSize} --no-dns ${address}`;
+            if (toolType === 'pathping') {
+                // 使用 Windows 内置的 pathping
+                cmd = `pathping -n -q ${count} -h ${maxHops} ${address}`;
+            } else {
+                // 传统 mtr（不太可能在 Windows 上）
+                cmd = `"${toolPath}" -r -c ${count} -s ${packetSize} --no-dns ${address}`;
+            }
         } else if (process.platform === 'darwin') {
             // macOS 使用 osascript 弹出图形化密码输入窗口
-            cmd = `osascript -e 'do shell script "${mtrPath} -r -c ${count} -s ${packetSize} -m ${maxHops} -n ${address}" with administrator privileges'`;
+            cmd = `osascript -e 'do shell script "${toolPath} -r -c ${count} -s ${packetSize} -m ${maxHops} -n ${address}" with administrator privileges'`;
         } else {
-            cmd = `"${mtrPath}" -r -c ${count} -s ${packetSize} -m ${maxHops} -n ${address}`;
+            // Linux/Unix
+            cmd = `"${toolPath}" -r -c ${count} -s ${packetSize} -m ${maxHops} -n ${address}`;
         }
         
-        console.log('MTR 命令:', cmd);
+        console.log('执行命令:', cmd);
         
         // 执行命令并获取输出
         const output = await new Promise((resolve, reject) => {
             exec(cmd, { encoding: 'utf8', maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
                 if (error) {
-                    console.error('MTR 命令执行失败:', error);
+                    console.error('命令执行失败:', error);
                     console.error('stderr:', stderr);
                     // 检查是否是权限问题
-                    if (stderr && (stderr.includes('Failure to open') || stderr.includes('Permission denied'))) {
-                        reject(new Error('MTR 需要管理员权限才能运行，请查看上方状态区域的解决方案'));
+                    if (stderr && (stderr.includes('Failure to open') || stderr.includes('Permission denied') || stderr.includes('需要管理员权限'))) {
+                        reject(new Error('工具需要管理员权限才能运行，请查看上方状态区域的解决方案'));
                     } else {
                         reject(error);
                     }
                 } else {
-                    console.log('MTR 命令输出:', stdout);
+                    console.log('命令输出:', stdout);
                     resolve(stdout);
                 }
             });
         });
         
-        // 解析输出
-        const hops = await parseMtrOutput(output);
-        console.log('MTR 解析结果:', hops);
+        // 根据工具类型解析输出
+        const hops = await parseMtrOutput(output, toolType);
+        console.log('解析结果:', hops);
         
         return {
             success: true,
             target: address,
-            hops: hops
+            hops: hops,
+            tool: toolType
         };
         
     } catch (error) {
-        console.error('MTR 测试失败:', error);
+        console.error('网络测试失败:', error);
         return {
             success: false,
             error: error.message || '执行命令失败'
@@ -81,15 +90,49 @@ async function executeMtrTest(address, options) {
 
 /**
  * 解析 MTR 输出
- * @param {string} output MTR 命令输出
+ * @param {string} output 命令输出
+ * @param {string} toolType 工具类型 (mtr, winmtr, pathping)
  * @returns {Promise<Array>} 解析后的跳数数据
  */
-async function parseMtrOutput(output) {
+async function parseMtrOutput(output, toolType = 'mtr') {
     const hops = [];
-    console.log('原始MTR输出:', JSON.stringify(output));
+    console.log('原始输出:', JSON.stringify(output));
+    console.log('工具类型:', toolType);
     
-    if (process.platform === 'win32') {
-        // 解析 Windows mtr 输出
+    if (toolType === 'pathping') {
+        // 解析 Windows pathping 输出
+        const lines = output.split('\n').filter(line => line.trim());
+        let inStatisticsSection = false;
+        
+        for (const line of lines) {
+            // 检查是否进入统计部分（包含 IP 地址和统计信息的行）
+            if (line.includes('ms') && line.includes('/') && line.includes('=') && line.includes('%')) {
+                // 解析统计行，格式类似：
+                // 1   11ms     0/   3 =  0%     0/   3 =  0%  192.168.2.1
+                const match = line.match(/^\s*(\d+)\s+(\d+)ms\s+(\d+)\/\s*(\d+)\s*=\s*(\d+)%\s+(\d+)\/\s*(\d+)\s*=\s*(\d+)%\s+([^\s]+)/);
+                if (match) {
+                    const hopNum = parseInt(match[1]);
+                    const rtt = parseInt(match[2]);
+                    const loss = parseInt(match[5]); // 第一个丢包率
+                    const ip = match[9];
+                    
+                    if (ip !== '0.0.0.0' && ip !== '*' && hopNum > 0) {
+                        hops.push({
+                            hop: Number(hopNum),
+                            ip: String(ip),
+                            hostname: String(ip),
+                            loss: Number(loss),
+                            avg: Number(rtt),
+                            min: Number(rtt),
+                            max: Number(rtt),
+                            location: String('')
+                        });
+                    }
+                }
+            }
+        }
+    } else if (process.platform === 'win32') {
+        // 解析传统 Windows mtr 输出（如果有的话）
         const lines = output.split('\n').filter(line => line.trim());
         let hop = 1;
         for (const line of lines) {
@@ -159,7 +202,7 @@ async function parseMtrOutput(output) {
     // 批量查询地理位置信息
     await batchQueryIPLocations(hops, 'MTR');
     
-    console.log('MTR解析完成，共解析到', hops.length, '个跳数');
+    console.log('解析完成，共解析到', hops.length, '个跳数');
     return hops;
 }
 

@@ -14,7 +14,7 @@
     <el-card class="mtr-status-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>MTR 工具状态</span>
+          <span>{{ getToolDisplayName() }} 工具状态</span>
           <el-button 
             type="primary" 
             size="small" 
@@ -30,7 +30,10 @@
         <div v-if="mtrStatus.status === 'ready'" class="status-item status-ready">
           <div class="status-title">
             <el-icon><SuccessFilled /></el-icon>
-            <span>MTR 工具已安装且可用</span>
+            <span>{{ getToolDisplayName() }} 工具已安装且可用</span>
+          </div>
+          <div v-if="mtrStatus.tool" class="tool-info">
+            <span class="tool-type">使用工具: {{ getToolDescription() }}</span>
           </div>
         </div>
         
@@ -38,7 +41,7 @@
           <div class="status-details">
             <div class="status-title">
               <el-icon><WarningFilled /></el-icon>
-              <span>MTR 工具已安装，但需要管理员权限</span>
+              <span>{{ getToolDisplayName() }} 工具已安装，但需要管理员权限</span>
             </div>
             <div class="status-solutions">
               <div class="solution-title">💡 解决方案：</div>
@@ -62,24 +65,14 @@
           <div class="status-details">
             <div class="status-title">
               <el-icon><CircleCloseFilled /></el-icon>
-              <span>MTR 工具未安装</span>
+              <span>{{ getToolDisplayName() }} 工具未安装</span>
             </div>
             <div class="status-solutions">
               <div class="solution-title">📦 安装方法：</div>
-              <div v-if="mtrStatus.installInstructions && mtrStatus.installInstructions.includes('|')" class="install-methods">
-                <div 
-                  v-for="(method, index) in mtrStatus.installInstructions.split(' | ')" 
-                  :key="index" 
-                  class="solution-item"
-                >
-                  <strong>{{ method.split(':')[0] }}:</strong>
-                  <code class="command-code">{{ method.split(':')[1]?.trim() || method }}</code>
-                </div>
-              </div>
-              <div v-else class="solution-item">
+              <div class="solution-item">
                 <code class="command-code">{{ mtrStatus.installInstructions }}</code>
               </div>
-              <div class="solution-item manual-run">
+              <div v-if="!isWindows()" class="solution-item manual-run">
                 <strong>💡 提示：</strong>安装后可能需要重启应用程序
               </div>
             </div>
@@ -89,7 +82,7 @@
         <div v-else class="status-item status-loading">
           <div class="status-title">
             <el-icon><Loading /></el-icon>
-            <span>正在检查 MTR 工具状态...</span>
+            <span>正在检查 {{ getToolDisplayName() }} 工具状态...</span>
           </div>
         </div>
       </div>
@@ -367,6 +360,30 @@ const checkMtrStatus = async () => {
 onMounted(() => {
   checkMtrStatus()
 })
+
+// 获取工具显示名称
+const getToolDisplayName = () => {
+  if (mtrStatus.value.tool === 'pathping') {
+    return 'PathPing'
+  } else {
+    return 'MTR'
+  }
+}
+
+// 获取工具描述
+const getToolDescription = () => {
+  if (mtrStatus.value.tool === 'pathping') {
+    return 'PathPing (Windows 内置网络诊断工具)'
+  } else {
+    return 'MTR (My Traceroute 网络诊断工具)'
+  }
+}
+
+// 判断是否为 Windows 平台
+const isWindows = () => {
+  return navigator.platform.toLowerCase().includes('win') || 
+         navigator.userAgent.toLowerCase().includes('windows')
+}
 </script>
 
 <style scoped>
@@ -459,5 +476,19 @@ onMounted(() => {
 
 .install-methods {
   margin-top: 5px;
+}
+
+.tool-info {
+  margin-top: 5px;
+  font-size: 0.8em;
+}
+
+.tool-type {
+  font-weight: bold;
+}
+
+.windows-note {
+  margin-top: 5px;
+  font-size: 0.8em;
 }
 </style> 

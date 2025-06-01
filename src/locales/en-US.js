@@ -116,7 +116,7 @@ export default {
   placeholder: {
     enterAddress: 'Enter IP address or domain',
     enterDomain: 'Enter domain (e.g., example.com)',
-    enterUrl: 'Enter complete URL (e.g., https://www.example.com)',
+    enterUrl: 'Enter website (e.g., www.example.com)',
     batchAdd: 'Enter content to add, one per line',
     search: 'Search favorites',
     selectRecordType: 'Select record type',

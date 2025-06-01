@@ -41,9 +41,19 @@
             <el-form-item :label="$t('form.dnsServer')">
               <el-select v-model="form.dnsServer" :placeholder="$t('placeholder.selectDnsServer')">
                 <el-option :label="$t('form.systemDefault')" value="default" />
-                <el-option label="8.8.8.8 (Google)" value="8.8.8.8" />
-                <el-option label="1.1.1.1 (Cloudflare)" value="1.1.1.1" />
-                <el-option label="114.114.114.114" value="114.114.114.114" />
+                <el-option label="8.8.8.8 (Google Primary)" value="8.8.8.8" />
+                <el-option label="8.8.4.4 (Google Secondary)" value="8.8.4.4" />
+                <el-option label="1.1.1.1 (Cloudflare Primary)" value="1.1.1.1" />
+                <el-option label="1.0.0.1 (Cloudflare Secondary)" value="1.0.0.1" />
+                <el-option label="114.114.114.114 (114DNS Primary)" value="114.114.114.114" />
+                <el-option label="114.114.115.115 (114DNS Secondary)" value="114.114.115.115" />
+                <el-option label="223.5.5.5 (阿里云 Primary)" value="223.5.5.5" />
+                <el-option label="223.6.6.6 (阿里云 Secondary)" value="223.6.6.6" />
+                <el-option label="180.76.76.76 (百度 DNS)" value="180.76.76.76" />
+                <el-option label="119.29.29.29 (腾讯 DNS)" value="119.29.29.29" />
+                <el-option label="9.9.9.9 (Quad9)" value="9.9.9.9" />
+                <el-option label="208.67.222.222 (OpenDNS)" value="208.67.222.222" />
+                <el-option label="208.67.220.220 (OpenDNS)" value="208.67.220.220" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -101,6 +111,9 @@ import BatchAddDialog from '../components/BatchAddDialog.vue'
 // 注入国际化服务
 const $t = inject('$t')
 
+// 从 preload 脚本暴露的 API 中获取 invoke 方法
+const { invoke } = window.electronAPI || {};
+
 // 域名列表
 const domainList = ref([
   { id: Date.now(), domain: '' }
@@ -154,47 +167,36 @@ const startTest = async () => {
       try {
         console.log('正在测试域名:', domain)
         
-        // 模拟DNS测试结果
-        const startTime = Date.now()
-        
-        // 这里应该调用实际的DNS查询API
-        // 现在使用模拟数据
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500))
-        
-        const endTime = Date.now()
-        const responseTime = endTime - startTime
-        
-        let result = ''
-        switch (form.recordType) {
-          case 'A':
-            result = '192.168.1.1, 192.168.1.2'
-            break
-          case 'AAAA':
-            result = '2001:db8::1, 2001:db8::2'
-            break
-          case 'CNAME':
-            result = 'alias.example.com'
-            break
-          case 'MX':
-            result = '10 mail.example.com, 20 mail2.example.com'
-            break
-          case 'TXT':
-            result = 'v=spf1 include:_spf.example.com ~all'
-            break
-          case 'NS':
-            result = 'ns1.example.com, ns2.example.com'
-            break
+        // 使用 IPC 调用主进程执行 DNS 测试
+        if (invoke) {
+          const result = await invoke('dns-test', domain, form.recordType, form.dnsServer);
+          
+          if (result && result.success) {
+            tempResults.push({
+              domain: result.domain,
+              recordType: result.recordType,
+              result: result.result,
+              responseTime: result.responseTime,
+              dnsServer: result.dnsServer
+            });
+          } else {
+            tempResults.push({
+              domain,
+              recordType: form.recordType,
+              result: result ? result.result : $t('messages.queryFailed'),
+              responseTime: '-',
+              dnsServer: form.dnsServer === 'default' ? $t('form.systemDefault') : form.dnsServer,
+              error: result ? result.error : '未知错误'
+            });
+          }
+        } else {
+          console.error('invoke 方法未定义，无法执行 DNS 测试');
+          ElMessage.error($t('messages.ipcRendererUndefined'));
+          break;
         }
         
-        tempResults.push({
-          domain,
-          recordType: form.recordType,
-          result,
-          responseTime,
-          dnsServer: form.dnsServer === 'default' ? $t('form.systemDefault') : form.dnsServer
-        })
       } catch (error) {
-        console.error('测试失败:', error)
+        console.error('DNS测试失败:', domain, error);
         tempResults.push({
           domain,
           recordType: form.recordType,
@@ -208,7 +210,7 @@ const startTest = async () => {
     }
 
     results.value = tempResults
-    console.log('测试完成，结果:', results.value)
+    console.log('DNS测试完成，结果:', results.value)
   } catch (error) {
     console.error('测试过程出错:', error)
     ElMessage.error($t('messages.testFailed') + '：' + error.message)

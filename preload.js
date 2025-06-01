@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   invoke: async (channel, ...args) => {
     const validChannels = [
       'resolve-dns',
+      'dns-test',
       'open-external',
       'ping-test',
       'ip2location-lookup',

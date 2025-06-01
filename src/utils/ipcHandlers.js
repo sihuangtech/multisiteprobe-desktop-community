@@ -9,6 +9,11 @@ const networkTests = require('./networkTests');
 
 // 将dns.resolve4转换为Promise形式
 const dnsResolve4 = util.promisify(dns.resolve4);
+const dnsResolve6 = util.promisify(dns.resolve6);
+const dnsResolveCname = util.promisify(dns.resolveCname);
+const dnsResolveMx = util.promisify(dns.resolveMx);
+const dnsResolveTxt = util.promisify(dns.resolveTxt);
+const dnsResolveNs = util.promisify(dns.resolveNs);
 const execPromise = util.promisify(exec);
 
 /**
@@ -21,6 +26,76 @@ async function handleDnsResolve(event, domain) {
     } catch (error) {
         console.error('DNS解析失败:', error);
         return domain; // 如果解析失败，返回原始输入
+    }
+}
+
+/**
+ * DNS 测试处理程序
+ */
+async function handleDnsTest(event, domain, recordType, dnsServer = 'default') {
+    try {
+        const startTime = Date.now();
+        let result = [];
+        
+        // 如果指定了 DNS 服务器，设置 DNS 服务器
+        if (dnsServer !== 'default') {
+            dns.setServers([dnsServer]);
+        } else {
+            // 重置为系统默认 DNS 服务器
+            dns.setServers([]);
+        }
+        
+        console.log('DNS 测试:', { domain, recordType, dnsServer });
+        
+        switch (recordType.toUpperCase()) {
+            case 'A':
+                result = await dnsResolve4(domain);
+                break;
+            case 'AAAA':
+                result = await dnsResolve6(domain);
+                break;
+            case 'CNAME':
+                result = await dnsResolveCname(domain);
+                break;
+            case 'MX':
+                const mxRecords = await dnsResolveMx(domain);
+                result = mxRecords.map(record => `${record.priority} ${record.exchange}`);
+                break;
+            case 'TXT':
+                const txtRecords = await dnsResolveTxt(domain);
+                result = txtRecords.map(record => record.join(''));
+                break;
+            case 'NS':
+                result = await dnsResolveNs(domain);
+                break;
+            default:
+                throw new Error(`不支持的记录类型: ${recordType}`);
+        }
+        
+        const endTime = Date.now();
+        const responseTime = endTime - startTime;
+        
+        return {
+            success: true,
+            domain,
+            recordType,
+            result: result.length > 0 ? result.join(', ') : '无记录',
+            responseTime,
+            dnsServer: dnsServer === 'default' ? '系统默认' : dnsServer
+        };
+        
+    } catch (error) {
+        console.error('DNS 测试失败:', error);
+        
+        return {
+            success: false,
+            domain,
+            recordType,
+            result: `查询失败: ${error.message}`,
+            responseTime: '-',
+            dnsServer: dnsServer === 'default' ? '系统默认' : dnsServer,
+            error: error.message
+        };
     }
 }
 
@@ -75,19 +150,41 @@ async function handlePingTest(event, options) {
         
         // 解析统计信息
         if (process.platform === 'win32') {
-            // Windows 输出解析
-            const statsMatch = stdout.match(/最短 = (\d+)ms，最长 = (\d+)ms，平均 = (\d+)ms/);
-            const lossMatch = stdout.match(/(\d+)% 丢失/);
-            const ttlMatch = stdout.match(/TTL=(\d+)/);
+            // Windows 输出解析 - 使用更通用的正则表达式处理编码问题
+            // 首先尝试匹配完整的统计行格式
+            let statsMatch = stdout.match(/= (\d+)ms.*?= (\d+)ms.*?= (\d+)ms/);
             
-            if (statsMatch) {
+            // 如果没有匹配到，尝试更宽松的匹配
+            if (!statsMatch) {
+                // 分别匹配最短、最长、平均值
+                const minMatch = stdout.match(/= (\d+)ms/);
+                const allMatches = stdout.match(/(\d+)ms/g);
+                
+                if (allMatches && allMatches.length >= 3) {
+                    // 从所有匹配的时间值中提取统计信息
+                    const times = allMatches.map(match => parseInt(match.replace('ms', '')));
+                    // 通常ping输出中，最后三个时间值是统计信息
+                    const statsValues = times.slice(-3);
+                    if (statsValues.length === 3) {
+                        result.min = statsValues[0];
+                        result.max = statsValues[1];
+                        result.avg = statsValues[2];
+                    }
+                }
+            } else {
                 result.min = parseInt(statsMatch[1]);
                 result.max = parseInt(statsMatch[2]);
                 result.avg = parseInt(statsMatch[3]);
             }
+            
+            // 匹配丢包率
+            const lossMatch = stdout.match(/(\d+)%/);
             if (lossMatch) {
                 result.loss = parseInt(lossMatch[1]);
             }
+            
+            // 匹配TTL值
+            const ttlMatch = stdout.match(/TTL=(\d+)/i);
             if (ttlMatch) {
                 result.ttl = parseInt(ttlMatch[1]);
             }
@@ -491,6 +588,7 @@ async function handleTracerouteTest(event, address, options) {
 
 module.exports = {
     handleDnsResolve,
+    handleDnsTest,
     handleOpenExternal,
     handlePingTest,
     handleIp2LocationLookup,

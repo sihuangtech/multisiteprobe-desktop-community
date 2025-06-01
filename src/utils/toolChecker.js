@@ -12,10 +12,16 @@ async function checkMtrStatus() {
         let mtrPath = '';
         
         if (process.platform === 'win32') {
-            // Windows 系统
-            const checkCmd = 'where mtr';
-            const { stdout } = await execAsync(checkCmd);
-            mtrPath = stdout.trim();
+            // Windows 系统 - 直接使用内置的 pathping
+            console.log('Windows 平台，使用内置的 pathping 工具');
+            
+            return {
+                installed: true,
+                hasPermission: true,
+                status: 'ready',
+                path: 'pathping',
+                tool: 'pathping'
+            };
         } else {
             // macOS/Linux 系统，尝试多个可能的路径
             const possiblePaths = [
@@ -88,7 +94,8 @@ async function checkMtrStatus() {
                         installed: true,
                         hasPermission: true,
                         status: 'ready',
-                        path: mtrPath
+                        path: mtrPath,
+                        tool: 'mtr'
                     };
                 } else {
                     console.log('MTR 需要管理员权限');
@@ -97,6 +104,7 @@ async function checkMtrStatus() {
                         hasPermission: false,
                         status: 'permission_required',
                         path: mtrPath,
+                        tool: 'mtr',
                         permissionSolution: getPermissionSolution()
                     };
                 }
@@ -108,7 +116,8 @@ async function checkMtrStatus() {
                         installed: true,
                         hasPermission: true,
                         status: 'ready',
-                        path: mtrPath
+                        path: mtrPath,
+                        tool: 'mtr'
                     };
                 } else {
                     console.log('MTR 需要管理员权限');
@@ -117,6 +126,7 @@ async function checkMtrStatus() {
                         hasPermission: false,
                         status: 'permission_required',
                         path: mtrPath,
+                        tool: 'mtr',
                         permissionSolution: getPermissionSolution()
                     };
                 }
@@ -128,6 +138,7 @@ async function checkMtrStatus() {
                 hasPermission: false,
                 status: 'permission_required',
                 path: mtrPath,
+                tool: 'mtr',
                 permissionSolution: getPermissionSolution()
             };
         }
@@ -167,7 +178,7 @@ function getInstallInstructions() {
     if (process.platform === 'darwin') {
         return 'brew install mtr';
     } else if (process.platform === 'win32') {
-        return '方法1: choco install mtr (需要 Chocolatey) | 方法2: 从 https://www.bitwizard.nl/mtr/ 下载安装 | 方法3: 使用 WSL 安装 Linux 版本';
+        return 'Windows 平台使用内置的 PathPing 工具，无需安装';
     } else {
         return 'Ubuntu/Debian: sudo apt-get install mtr | CentOS/RHEL: sudo yum install mtr | Fedora: sudo dnf install mtr | Arch: sudo pacman -S mtr | openSUSE: sudo zypper install mtr';
     }

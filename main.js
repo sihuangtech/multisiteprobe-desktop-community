@@ -103,6 +103,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // 注册 IPC 处理程序
 ipcMain.handle('resolve-dns', ipcHandlers.handleDnsResolve);
+ipcMain.handle('dns-test', ipcHandlers.handleDnsTest);
 ipcMain.handle('open-external', (event, url) => ipcHandlers.handleOpenExternal(event, url, shell));
 ipcMain.handle('ping-test', ipcHandlers.handlePingTest);
 ipcMain.handle('ip2location-lookup', ipcHandlers.handleIp2LocationLookup);

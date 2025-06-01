@@ -116,7 +116,7 @@ export default {
   placeholder: {
     enterAddress: '请输入IP地址或域名',
     enterDomain: '请输入域名（如：example.com）',
-    enterUrl: '请输入完整的URL（如：https://www.example.com）',
+    enterUrl: '请输入网址（如：www.example.com）',
     batchAdd: '请输入要添加的内容，每行一个',
     search: '搜索收藏',
     selectRecordType: '选择记录类型',
