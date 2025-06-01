@@ -124,7 +124,8 @@ async function handlePingTest(event, options) {
         if (process.platform === 'win32') {
             cmd = `ping -n ${count} -l ${size} -w ${timeout * 1000} ${host}`;
         } else {
-            cmd = `ping -c ${count} -s ${size} -W ${timeout} ${host}`;
+            // macOS/Linux - 使用简单的ping命令以确保显示每个回复的详细信息（包括TTL）
+            cmd = `ping -c ${count} ${host}`;
         }
         
         console.log('执行ping命令:', cmd);
@@ -189,10 +190,9 @@ async function handlePingTest(event, options) {
                 result.ttl = parseInt(ttlMatch[1]);
             }
         } else {
-            // macOS/Linux 输出解析
-            const statsMatch = stdout.match(/min\/avg\/max(?:\/mdev)? = ([\d.]+)\/([\d.]+)\/([\d.]+)/);
-            const lossMatch = stdout.match(/(\d+)% packet loss/);
-            const ttlMatch = stdout.match(/ttl=(\d+)/);
+            // 改进的macOS/Linux输出解析
+            const statsMatch = stdout.match(/min\/avg\/max\/(?:mdev|stddev)\s*=\s*([\d.]+)\/([\d.]+)\/([\d.]+)/);
+            const lossMatch = stdout.match(/(\d+(?:\.\d+)?)%\s+packet\s+loss/);
             
             if (statsMatch) {
                 result.min = parseFloat(statsMatch[1]);
@@ -200,10 +200,17 @@ async function handlePingTest(event, options) {
                 result.max = parseFloat(statsMatch[3]);
             }
             if (lossMatch) {
-                result.loss = parseInt(lossMatch[1]);
+                result.loss = parseFloat(lossMatch[1]);
             }
-            if (ttlMatch) {
-                result.ttl = parseInt(ttlMatch[1]);
+            
+            // 从每个ping回复中提取TTL值（如果有的话）
+            const ttlMatches = stdout.match(/ttl=(\d+)/gi);
+            if (ttlMatches && ttlMatches.length > 0) {
+                // 取第一个TTL值
+                const ttlMatch = ttlMatches[0].match(/ttl=(\d+)/i);
+                if (ttlMatch) {
+                    result.ttl = parseInt(ttlMatch[1]);
+                }
             }
         }
         
@@ -595,4 +602,4 @@ module.exports = {
     handleCheckMtrStatus,
     handleMtrTest,
     handleTracerouteTest
-}; 
+};

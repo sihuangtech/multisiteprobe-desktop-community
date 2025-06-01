@@ -29,7 +29,8 @@ class NetworkService {
       if (process.platform === 'win32') {
         cmd = `ping -n ${count} -l ${size} -w ${timeout * 1000} ${host}`
       } else {
-        cmd = `ping -c ${count} -s ${size} -W ${timeout} ${host}`
+        // macOS/Linux - 使用简单的ping命令以确保显示每个回复的详细信息（包括TTL）
+        cmd = `ping -c ${count} ${host}`
       }
       
       const { stdout } = await execPromise(cmd)
@@ -224,8 +225,7 @@ class NetworkService {
     } else {
       // macOS/Linux 输出解析
       const statsMatch = output.match(/min\/avg\/max(?:\/mdev)? = ([\d.]+)\/([\d.]+)\/([\d.]+)/)
-      const lossMatch = output.match(/(\d+)% packet loss/)
-      const ttlMatch = output.match(/ttl=(\d+)/)
+      const lossMatch = output.match(/(\d+(?:\.\d+)?)% packet loss/)
       const packetMatch = output.match(/(\d+) packets transmitted, (\d+) received/)
       
       if (statsMatch) {
@@ -234,14 +234,21 @@ class NetworkService {
         result.max = parseFloat(statsMatch[3])
       }
       if (lossMatch) {
-        result.loss = parseInt(lossMatch[1])
-      }
-      if (ttlMatch) {
-        result.ttl = parseInt(ttlMatch[1])
+        result.loss = parseFloat(lossMatch[1])
       }
       if (packetMatch) {
         result.sent = parseInt(packetMatch[1])
         result.received = parseInt(packetMatch[2])
+      }
+      
+      // 从每个ping回复中提取TTL值（如果有的话）
+      const ttlMatches = output.match(/ttl=(\d+)/gi)
+      if (ttlMatches && ttlMatches.length > 0) {
+        // 取第一个TTL值
+        const ttlMatch = ttlMatches[0].match(/ttl=(\d+)/i)
+        if (ttlMatch) {
+          result.ttl = parseInt(ttlMatch[1])
+        }
       }
     }
     
