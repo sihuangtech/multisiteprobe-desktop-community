@@ -60,7 +60,8 @@ export default {
     fromFavorites: '从收藏夹选择',
     batchAdd: '批量添加',
     clearAll: '清空所有',
-    favorite: '收藏'
+    favorite: '收藏',
+    recheckTool: '重新检查工具'
   },
   
   // 表格列标题
@@ -178,7 +179,13 @@ export default {
     saveFailed: '保存失败',
     loadFailed: '加载失败',
     testCompleted: '测试完成',
-    addedFromPage: '从{page}页面添加'
+    addedFromPage: '从{page}页面添加',
+    ipcRendererUndefined: 'IPC渲染器未定义，无法执行测试',
+    toolNotInstalled: '{tool} 工具未安装',
+    toolPermissionError: '工具权限错误',
+    toolReady: '{tool} 工具已就绪',
+    toolNotReady: '{tool} 工具未就绪',
+    checkToolFailed: '检查工具状态失败'
   },
   
   // 设置页面

@@ -375,32 +375,28 @@
           
           <el-descriptions :column="3" border>
             <el-descriptions-item :label="$t('settings.appName')">
-              {{ currentAppInfo.name }}
+              {{ getAppName($i18n.currentLanguage.value) }}
             </el-descriptions-item>
             <el-descriptions-item :label="$t('common.version')">
-              <span>{{ appVersion }}</span>
+              <span>{{ formatVersionWithPlatform() }}</span>
             </el-descriptions-item>
             <el-descriptions-item :label="$t('settings.buildDate')">
               <span>{{ buildDate }}</span>
             </el-descriptions-item>
             <el-descriptions-item :label="$t('settings.author')">
-              <span>{{ appAuthor }}</span>
+              <span>{{ packageInfo.author.name }}</span>
             </el-descriptions-item>
             <el-descriptions-item :label="$t('settings.email')">
-              <el-link @click="openInBrowser(`mailto:${currentAppInfo.email}`)" type="primary">
-                {{ currentAppInfo.email }}
+              <el-link @click="openInBrowser(`mailto:${packageInfo.author.email}`)" type="primary">
+                {{ packageInfo.author.email }}
               </el-link>
             </el-descriptions-item>
             <el-descriptions-item :label="$t('settings.homepage')">
-              <el-link @click="openInBrowser(currentAppInfo.homepage)" type="primary">
-                {{ currentAppInfo.homepage }}
+              <el-link @click="openInBrowser(packageInfo.homepage)" type="primary">
+                {{ packageInfo.homepage }}
               </el-link>
             </el-descriptions-item>
           </el-descriptions>
-          
-          <div class="app-description">
-            <p>{{ getAppDescription() }}</p>
-          </div>
         </el-card>
       </el-form>
     </el-card>
@@ -413,7 +409,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import storageService from '../services/storage'
 import ipService from '../services/ipService'
-import { getAppInfo, getDescription, getAuthor, appInfo, getAppName } from '../config/appInfo'
+import { appInfo, getAppName } from '../config/appInfo'
+import packageInfo from '../../package.json'
 
 // 注入国际化服务和 i18nService 实例
 const $t = inject('$t')
@@ -422,35 +419,121 @@ const $i18n = inject('$i18n')
 // 获取应用信息（现在从 i18nService 获取响应式值）
 const appVersion = appInfo.version;
 const buildDate = appInfo.buildDate;
-const appAuthor = computed(() => {
-  // 这里也使用 i18nService 的当前语言来获取作者名字
-  const language = $i18n.getCurrentLanguage();
-  return getAuthor(language);
-});
 
-// 获取当前语言的应用信息 for 'About' section
-const currentAppInfo = computed(() => {
-  // getAppInfo() 现在返回非本地化的基本信息
-  const basicInfo = getAppInfo();
-  // 作者和描述仍然需要根据当前语言获取
-  return {
-    ...basicInfo,
-    name: getAppName($i18n.currentLanguage.value), // 使用 getAppName 获取本地化应用名称
-    author: getAuthor($i18n.getCurrentLanguage()),
-    description: getDescription($i18n.currentLanguage.value)
-  };
-});
-
-// 获取当前语言的应用描述
-const getAppDescription = () => {
-  return getDescription($i18n.currentLanguage.value)
-}
-
-// 用默认浏览器打开链接
-const openInBrowser = (url) => {
-  console.log('openInBrowser called with URL:', url)
-  // 直接使用window.open在默认浏览器中打开链接
-  window.open(url, '_blank')
+// 格式化版本号，添加平台标识
+const formatVersionWithPlatform = () => {
+  let osName = ''
+  let arch = ''
+  
+  // 在Electron环境中，使用electronAPI获取准确的系统信息
+  if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.getSystemInfo) {
+    try {
+      const systemInfo = window.electronAPI.getSystemInfo()
+      const platform = systemInfo.platform
+      const processArch = systemInfo.arch
+      
+      // 转换平台名称
+      switch (platform) {
+        case 'win32':
+          osName = 'windows'
+          break
+        case 'darwin':
+          osName = 'macos'
+          break
+        case 'linux':
+          osName = 'linux'
+          break
+        default:
+          osName = platform
+      }
+      
+      // 转换架构名称
+      switch (processArch) {
+        case 'x64':
+        case 'x86_64':
+          arch = 'x64'
+          break
+        case 'arm64':
+        case 'aarch64':
+          arch = 'arm64'
+          break
+        case 'ia32':
+        case 'x86':
+          arch = 'x86'
+          break
+        default:
+          arch = processArch
+      }
+    } catch (error) {
+      console.warn('无法通过electronAPI获取系统信息:', error)
+    }
+  }
+  
+  // 如果无法通过electronAPI获取，尝试直接访问process（在渲染进程中可能可用）
+  if (!osName && typeof process !== 'undefined') {
+    const platform = process.platform
+    const processArch = process.arch
+    
+    // 转换平台名称
+    switch (platform) {
+      case 'win32':
+        osName = 'windows'
+        break
+      case 'darwin':
+        osName = 'macos'
+        break
+      case 'linux':
+        osName = 'linux'
+        break
+      default:
+        osName = platform
+    }
+    
+    // 转换架构名称
+    switch (processArch) {
+      case 'x64':
+      case 'x86_64':
+        arch = 'x64'
+        break
+      case 'arm64':
+      case 'aarch64':
+        arch = 'arm64'
+        break
+      case 'ia32':
+      case 'x86':
+        arch = 'x86'
+        break
+      default:
+        arch = processArch
+    }
+  }
+  
+  // 如果还是无法获取，使用浏览器检测作为备用
+  if (!osName) {
+    const platform = navigator.platform.toLowerCase()
+    const userAgent = navigator.userAgent.toLowerCase()
+    
+    if (platform.includes('win') || userAgent.includes('windows')) {
+      osName = 'windows'
+    } else if (platform.includes('mac') || userAgent.includes('mac')) {
+      osName = 'macos'
+    } else if (platform.includes('linux') || userAgent.includes('linux')) {
+      osName = 'linux'
+    } else {
+      osName = 'unknown'
+    }
+    
+    // 备用架构检测
+    if (platform.includes('arm') || userAgent.includes('arm')) {
+      arch = 'arm64'
+    } else if (platform.includes('x86_64') || platform.includes('amd64')) {
+      arch = 'x64'
+    } else {
+      arch = 'x64'
+    }
+  }
+  
+  return `${appVersion}-${osName}_${arch}`
 }
 
 // 保存状态
@@ -761,7 +844,7 @@ const exportSettings = () => {
       ui: { ...uiSettings },
       data: { ...dataSettings },
       exportTime: new Date().toISOString(),
-      version: currentAppInfo.value.version
+      version: packageInfo.version
     }
 
     const dataStr = JSON.stringify(allSettings, null, 2)
@@ -847,6 +930,13 @@ const clearAllData = async () => {
     // 用户取消操作
     console.log('用户取消清除操作')
   }
+}
+
+// 用默认浏览器打开链接
+const openInBrowser = (url) => {
+  console.log('openInBrowser called with URL:', url)
+  // 直接使用window.open在默认浏览器中打开链接
+  window.open(url, '_blank')
 }
 
 // 组件挂载时加载设置

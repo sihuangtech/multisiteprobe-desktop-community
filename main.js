@@ -22,7 +22,11 @@ function createWindow() {
             nodeIntegration: false,
             contextIsolation: true,
             enableRemoteModule: false,
-            preload: preloadPath
+            preload: preloadPath,
+            // 在构建版本中允许网络请求
+            webSecurity: false, // 在生产环境中允许跨域请求
+            allowRunningInsecureContent: true, // 允许不安全内容
+            experimentalFeatures: true // 启用实验性功能
         }
     });
 
@@ -72,6 +76,17 @@ function createWindow() {
 
 // 当Electron完成初始化时被调用
 app.whenReady().then(() => {
+    // 在Linux构建版本中设置更宽松的安全策略
+    if (process.platform === 'linux' && process.env.NODE_ENV !== 'development') {
+        // 允许不安全的HTTP请求
+        app.commandLine.appendSwitch('--ignore-certificate-errors');
+        app.commandLine.appendSwitch('--ignore-ssl-errors');
+        app.commandLine.appendSwitch('--ignore-certificate-errors-spki-list');
+        app.commandLine.appendSwitch('--disable-web-security');
+        app.commandLine.appendSwitch('--allow-running-insecure-content');
+        app.commandLine.appendSwitch('--disable-features', 'VizDisplayCompositor');
+    }
+    
     createWindow()
 
     // 移除默认菜单栏
@@ -109,5 +124,6 @@ ipcMain.handle('ping-test', ipcHandlers.handlePingTest);
 ipcMain.handle('http-test', ipcHandlers.handleHttpTest);
 ipcMain.handle('ip2location-lookup', ipcHandlers.handleIp2LocationLookup);
 ipcMain.handle('check-mtr-status', ipcHandlers.handleCheckMtrStatus);
+ipcMain.handle('check-traceroute-status', ipcHandlers.handleCheckTracerouteStatus);
 ipcMain.handle('mtr-test', ipcHandlers.handleMtrTest);
 ipcMain.handle('traceroute-test', ipcHandlers.handleTracerouteTest);

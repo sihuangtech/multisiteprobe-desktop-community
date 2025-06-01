@@ -10,6 +10,71 @@
       />
     </template>
 
+    <!-- 工具状态提示 -->
+    <el-alert
+      v-if="isLinux && toolStatus && !toolStatus.installed"
+      :title="$t('messages.toolNotInstalled', { tool: 'traceroute' })"
+      type="warning"
+      :description="toolStatus.installInstructions"
+      show-icon
+      :closable="false"
+      style="margin-bottom: 20px;"
+    >
+      <template #default>
+        <div>
+          <p><strong>{{ $t('messages.toolNotInstalled', { tool: 'traceroute' }) }}</strong></p>
+          <div style="white-space: pre-line; margin-top: 10px; font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 4px;">
+            {{ toolStatus.installInstructions }}
+          </div>
+          <el-button 
+            type="primary" 
+            size="small" 
+            style="margin-top: 10px;"
+            @click="checkToolStatus"
+          >
+            {{ $t('buttons.recheckTool') }}
+          </el-button>
+        </div>
+      </template>
+    </el-alert>
+
+    <el-alert
+      v-else-if="isLinux && toolStatus && toolStatus.status === 'permission_error'"
+      :title="$t('messages.toolPermissionError')"
+      type="warning"
+      :description="toolStatus.error"
+      show-icon
+      :closable="false"
+      style="margin-bottom: 20px;"
+    >
+      <template #default>
+        <div>
+          <p><strong>{{ $t('messages.toolPermissionError') }}</strong></p>
+          <p>{{ toolStatus.error }}</p>
+          <div style="white-space: pre-line; margin-top: 10px; font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 4px;">
+            {{ toolStatus.installInstructions }}
+          </div>
+          <el-button 
+            type="primary" 
+            size="small" 
+            style="margin-top: 10px;"
+            @click="checkToolStatus"
+          >
+            {{ $t('buttons.recheckTool') }}
+          </el-button>
+        </div>
+      </template>
+    </el-alert>
+
+    <el-alert
+      v-else-if="isLinux && toolStatus && toolStatus.installed && toolStatus.status === 'ready'"
+      :title="$t('messages.toolReady', { tool: toolStatus.tool || 'traceroute' })"
+      type="success"
+      show-icon
+      :closable="true"
+      style="margin-bottom: 20px;"
+    />
+
     <!-- 输入区域 -->
     <AddressInputList
       v-model="addressList"
@@ -106,7 +171,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, inject } from 'vue'
+import { ref, reactive, inject, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import storageService from '../services/storage'
 import {
@@ -140,6 +205,33 @@ const loading = ref(false)
 const results = ref([])
 const showFavorites = ref(false)
 const showBatchAdd = ref(false)
+const toolStatus = ref(null)
+const isLinux = ref(process.platform === 'linux')
+
+// 检查工具状态
+const checkToolStatus = async () => {
+  // 只在Linux系统上检查工具状态
+  if (!isLinux.value) {
+    return;
+  }
+  
+  try {
+    if (invoke) {
+      const status = await invoke('check-traceroute-status');
+      toolStatus.value = status;
+      console.log('Traceroute工具状态:', status);
+      
+      if (status.installed && status.status === 'ready') {
+        ElMessage.success($t('messages.toolReady', { tool: status.tool || 'traceroute' }));
+      }
+    } else {
+      console.error('invoke 方法未定义，无法检查工具状态');
+    }
+  } catch (error) {
+    console.error('检查traceroute工具状态失败:', error);
+    ElMessage.error($t('messages.checkToolFailed') + '：' + error.message);
+  }
+}
 
 // 开始测试
 const startTest = async () => {
@@ -150,6 +242,22 @@ const startTest = async () => {
   if (validAddresses.length === 0) {
     ElMessage.warning($t('messages.pleaseAddAddress'))
     return
+  }
+
+  // 只在Linux系统上检查工具状态
+  if (isLinux.value) {
+    if (!toolStatus.value || !toolStatus.value.installed) {
+      await checkToolStatus();
+      if (!toolStatus.value || !toolStatus.value.installed) {
+        ElMessage.error($t('messages.toolNotInstalled', { tool: 'traceroute' }));
+        return;
+      }
+    }
+
+    if (toolStatus.value.status !== 'ready') {
+      ElMessage.error($t('messages.toolNotReady', { tool: 'traceroute' }));
+      return;
+    }
   }
 
   loading.value = true
@@ -246,6 +354,14 @@ const handleBatchAdd = (addresses) => {
     })
   })
 }
+
+// 组件挂载时检查工具状态
+onMounted(() => {
+  // 只在Linux系统上检查工具状态
+  if (isLinux.value) {
+    checkToolStatus();
+  }
+})
 </script>
 
 <style scoped>

@@ -1,102 +1,27 @@
-const dns = require('dns');
-const util = require('util');
-const { exec } = require('child_process');
-const https = require('https');
-const http = require('http');
+/**
+ * IPC处理程序模块
+ * 提供主进程和渲染进程之间的通信处理
+ */
 
 const toolChecker = require('./toolChecker');
 const networkTests = require('./networkTests');
-
-// 将dns.resolve4转换为Promise形式
-const dnsResolve4 = util.promisify(dns.resolve4);
-const dnsResolve6 = util.promisify(dns.resolve6);
-const dnsResolveCname = util.promisify(dns.resolveCname);
-const dnsResolveMx = util.promisify(dns.resolveMx);
-const dnsResolveTxt = util.promisify(dns.resolveTxt);
-const dnsResolveNs = util.promisify(dns.resolveNs);
-const execPromise = util.promisify(exec);
+const httpService = require('./httpService');
+const ipLocationService = require('./ipLocationService');
+const dnsService = require('./dnsService');
+const pingService = require('./pingService');
 
 /**
  * DNS 解析处理程序
  */
 async function handleDnsResolve(event, domain) {
-    try {
-        const ips = await dnsResolve4(domain);
-        return ips[0]; // 返回第一个IP地址
-    } catch (error) {
-        console.error('DNS解析失败:', error);
-        return domain; // 如果解析失败，返回原始输入
-    }
+    return await dnsService.resolve(domain);
 }
 
 /**
  * DNS 测试处理程序
  */
 async function handleDnsTest(event, domain, recordType, dnsServer = 'default') {
-    try {
-        const startTime = Date.now();
-        let result = [];
-        
-        // 如果指定了 DNS 服务器，设置 DNS 服务器
-        if (dnsServer !== 'default') {
-            dns.setServers([dnsServer]);
-        } else {
-            // 重置为系统默认 DNS 服务器
-            dns.setServers([]);
-        }
-        
-        console.log('DNS 测试:', { domain, recordType, dnsServer });
-        
-        switch (recordType.toUpperCase()) {
-            case 'A':
-                result = await dnsResolve4(domain);
-                break;
-            case 'AAAA':
-                result = await dnsResolve6(domain);
-                break;
-            case 'CNAME':
-                result = await dnsResolveCname(domain);
-                break;
-            case 'MX':
-                const mxRecords = await dnsResolveMx(domain);
-                result = mxRecords.map(record => `${record.priority} ${record.exchange}`);
-                break;
-            case 'TXT':
-                const txtRecords = await dnsResolveTxt(domain);
-                result = txtRecords.map(record => record.join(''));
-                break;
-            case 'NS':
-                result = await dnsResolveNs(domain);
-                break;
-            default:
-                throw new Error(`不支持的记录类型: ${recordType}`);
-        }
-        
-        const endTime = Date.now();
-        const responseTime = endTime - startTime;
-        
-        return {
-            success: true,
-            domain,
-            recordType,
-            result: result.length > 0 ? result.join(', ') : '无记录',
-            responseTime,
-            dnsServer: dnsServer === 'default' ? '系统默认' : dnsServer
-        };
-        
-    } catch (error) {
-        console.error('DNS 测试失败:', error);
-        
-        return {
-            success: false,
-            domain,
-            recordType,
-            result: `查询失败: ${error.message}`,
-            responseTime: '-',
-            dnsServer: dnsServer === 'default' ? '系统默认' : dnsServer,
-            error: error.message
-        };
-    }
+    return await dnsService.test(domain, recordType, dnsServer);
 }
 
 /**
@@ -116,211 +41,18 @@ async function handleOpenExternal(event, url, shell) {
  * Ping 测试处理程序
  */
 async function handlePingTest(event, options) {
-    const { host, count = 4, size = 32, timeout = 3 } = options;
-    
-    try {
-        // 根据操作系统构建不同的 ping 命令
-        let cmd;
-        if (process.platform === 'win32') {
-            cmd = `ping -n ${count} -l ${size} -w ${timeout * 1000} ${host}`;
-        } else {
-            // macOS/Linux - 使用简单的ping命令以确保显示每个回复的详细信息（包括TTL）
-            cmd = `ping -c ${count} ${host}`;
-        }
-        
-        console.log('执行ping命令:', cmd);
-        const { stdout } = await execPromise(cmd);
-        console.log('ping输出:', stdout);
-        
-        // 解析输出结果
-        const result = {
-            host,
-            ip: '',
-            min: 0,
-            avg: 0,
-            max: 0,
-            loss: 0,
-            ttl: 0
-        };
-        
-        // 从输出中提取IP地址
-        const ipMatch = stdout.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
-        if (ipMatch) {
-            result.ip = ipMatch[0];
-        }
-        
-        // 解析统计信息
-        if (process.platform === 'win32') {
-            // Windows 输出解析 - 使用更通用的正则表达式处理编码问题
-            // 首先尝试匹配完整的统计行格式
-            let statsMatch = stdout.match(/= (\d+)ms.*?= (\d+)ms.*?= (\d+)ms/);
-            
-            // 如果没有匹配到，尝试更宽松的匹配
-            if (!statsMatch) {
-                // 分别匹配最短、最长、平均值
-                const minMatch = stdout.match(/= (\d+)ms/);
-                const allMatches = stdout.match(/(\d+)ms/g);
-                
-                if (allMatches && allMatches.length >= 3) {
-                    // 从所有匹配的时间值中提取统计信息
-                    const times = allMatches.map(match => parseInt(match.replace('ms', '')));
-                    // 通常ping输出中，最后三个时间值是统计信息
-                    const statsValues = times.slice(-3);
-                    if (statsValues.length === 3) {
-                        result.min = statsValues[0];
-                        result.max = statsValues[1];
-                        result.avg = statsValues[2];
-                    }
-                }
-            } else {
-                result.min = parseInt(statsMatch[1]);
-                result.max = parseInt(statsMatch[2]);
-                result.avg = parseInt(statsMatch[3]);
-            }
-            
-            // 匹配丢包率
-            const lossMatch = stdout.match(/(\d+)%/);
-            if (lossMatch) {
-                result.loss = parseInt(lossMatch[1]);
-            }
-            
-            // 匹配TTL值
-            const ttlMatch = stdout.match(/TTL=(\d+)/i);
-            if (ttlMatch) {
-                result.ttl = parseInt(ttlMatch[1]);
-            }
-        } else {
-            // 改进的macOS/Linux输出解析
-            const statsMatch = stdout.match(/min\/avg\/max\/(?:mdev|stddev)\s*=\s*([\d.]+)\/([\d.]+)\/([\d.]+)/);
-            const lossMatch = stdout.match(/(\d+(?:\.\d+)?)%\s+packet\s+loss/);
-            
-            if (statsMatch) {
-                result.min = parseFloat(statsMatch[1]);
-                result.avg = parseFloat(statsMatch[2]);
-                result.max = parseFloat(statsMatch[3]);
-            }
-            if (lossMatch) {
-                result.loss = parseFloat(lossMatch[1]);
-            }
-            
-            // 从每个ping回复中提取TTL值（如果有的话）
-            const ttlMatches = stdout.match(/ttl=(\d+)/gi);
-            if (ttlMatches && ttlMatches.length > 0) {
-                // 取第一个TTL值
-                const ttlMatch = ttlMatches[0].match(/ttl=(\d+)/i);
-                if (ttlMatch) {
-                    result.ttl = parseInt(ttlMatch[1]);
-                }
-            }
-        }
-        
-        return result;
-    } catch (error) {
-        console.error('ping测试失败:', error);
-        throw new Error(`Ping测试失败: ${error.message}`);
-    }
+    return await pingService.test(options);
 }
 
 /**
  * HTTP 测试处理程序
  */
 async function handleHttpTest(event, options) {
-    const { url, method = 'GET', timeout = 10000, headers = {} } = options;
-    
     try {
-        const startTime = Date.now();
-        
-        // 处理URL格式，自动添加协议前缀
-        let processedUrl = url.trim();
-        if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
-            // 默认使用https协议
-            processedUrl = 'https://' + processedUrl;
-        }
-        
-        // 解析URL
-        const urlObj = new URL(processedUrl);
-        const isHttps = urlObj.protocol === 'https:';
-        const protocol = isHttps ? https : http;
-        
-        // 构建请求选项
-        const requestOptions = {
-            hostname: urlObj.hostname,
-            port: urlObj.port || (isHttps ? 443 : 80),
-            path: urlObj.pathname + urlObj.search,
-            method: method.toUpperCase(),
-            timeout: timeout,
-            headers: {
-                'User-Agent': 'MultiSiteLatencyTool/1.0',
-                ...headers
-            }
-        };
-        
-        console.log('执行HTTP测试:', { url: processedUrl, method, timeout });
-        
-        return new Promise((resolve, reject) => {
-            const req = protocol.request(requestOptions, (res) => {
-                const endTime = Date.now();
-                const responseTime = endTime - startTime;
-                
-                // 获取响应头信息
-                const contentLength = res.headers['content-length'] || '-';
-                const contentType = res.headers['content-type'] || '-';
-                
-                // 读取响应体（用于计算大小）
-                let responseData = '';
-                res.on('data', (chunk) => {
-                    responseData += chunk;
-                });
-                
-                res.on('end', () => {
-                    resolve({
-                        url: processedUrl,
-                        method: method.toUpperCase(),
-                        status: res.statusCode,
-                        statusText: res.statusMessage || '',
-                        responseTime,
-                        contentLength: contentLength === '-' ? responseData.length : contentLength,
-                        contentType,
-                        headers: res.headers
-                    });
-                });
-            });
-            
-            req.on('error', (error) => {
-                const endTime = Date.now();
-                const responseTime = endTime - startTime;
-                
-                console.error('HTTP测试失败:', error);
-                
-                // 如果是HTTPS错误，尝试使用HTTP
-                if (isHttps && (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.code === 'CERT_HAS_EXPIRED')) {
-                    console.log('HTTPS连接失败，尝试HTTP...');
-                    const httpUrl = processedUrl.replace('https://', 'http://');
-                    
-                    // 递归调用，使用HTTP协议
-                    handleHttpTest(event, { ...options, url: httpUrl })
-                        .then(resolve)
-                        .catch(() => {
-                            reject(new Error(`HTTP测试失败: ${error.message}`));
-                        });
-                    return;
-                }
-                
-                reject(new Error(`HTTP测试失败: ${error.message}`));
-            });
-            
-            req.on('timeout', () => {
-                req.destroy();
-                reject(new Error('请求超时'));
-            });
-            
-            // 发送请求
-            req.end();
-        });
-        
+        return await httpService.executeTest(options);
     } catch (error) {
-        console.error('HTTP测试失败:', error);
-        throw new Error(`HTTP测试失败: ${error.message}`);
+        console.error('HTTP测试处理失败:', error);
+        throw error;
     }
 }
 
@@ -328,351 +60,15 @@ async function handleHttpTest(event, options) {
  * IP2Location 查询处理程序
  */
 async function handleIp2LocationLookup(event, ip, userSettings = null) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            // 获取用户设置，如果没有传入则使用默认设置
-            const settings = userSettings || {
-                ipLookupService: 'auto',
-                ip2locationApiKey: '',
-                ipinfoToken: '',
-                ipLookupTimeout: 8
-            };
-
-            let targetIp = ip;
-            
-            // 如果传入的是'current'，则先获取当前IP
-            if (ip === 'current') {
-                console.log('检测到查询当前IP请求，正在获取当前IP...');
-                
-                // 定义所有可用的IP地理位置服务，它们都能返回当前IP
-                const currentIpServices = {
-                    'ip-api': {
-                        name: 'ip-api',
-                        url: `http://ip-api.com/json/?fields=status,message,country,regionName,city,isp,query`,
-                        parseResponse: (data) => {
-                            const result = JSON.parse(data);
-                            if (result.status === 'success') {
-                                return {
-                                    ip: result.query,
-                                    country_name: result.country,
-                                    region_name: result.regionName,
-                                    city_name: result.city,
-                                    isp: result.isp
-                                };
-                            } else {
-                                throw new Error(result.message || '查询失败');
-                            }
-                        }
-                    },
-                    'ipapi': {
-                        name: 'ipapi',
-                        url: `https://ipapi.co/json/`,
-                        parseResponse: (data) => {
-                            const result = JSON.parse(data);
-                            if (result.error) {
-                                throw new Error(result.reason || '查询失败');
-                            }
-                            return {
-                                ip: result.ip,
-                                country_name: result.country_name,
-                                region_name: result.region,
-                                city_name: result.city,
-                                isp: result.org
-                            };
-                        }
-                    },
-                    'ip2location': {
-                        name: 'ip2location',
-                        url: `https://api.ip2location.io/v2/ip?key=${settings.ip2locationApiKey}&format=json`,
-                        parseResponse: (data) => {
-                            const result = JSON.parse(data);
-                            if (result.error) {
-                                throw new Error(result.error.error_message || '查询失败');
-                            }
-                            return {
-                                ip: result.ip,
-                                country_name: result.country_name,
-                                region_name: result.region_name,
-                                city_name: result.city_name,
-                                isp: result.isp
-                            };
-                        },
-                        requiresKey: true
-                    },
-                    'ipinfo': {
-                        name: 'ipinfo',
-                        url: settings.ipinfoToken 
-                            ? `https://ipinfo.io/json?token=${settings.ipinfoToken}`
-                            : `https://ipinfo.io/json`,
-                        parseResponse: (data) => {
-                            const result = JSON.parse(data);
-                            if (result.error) {
-                                throw new Error(result.error.message || '查询失败');
-                            }
-                            return {
-                                ip: result.ip,
-                                country_name: result.country,
-                                region_name: result.region,
-                                city_name: result.city,
-                                isp: result.org
-                            };
-                        }
-                    }
-                };
-
-                // 根据用户设置选择服务
-                let servicesToTry = [];
-                
-                if (settings.ipLookupService === 'auto') {
-                    // 自动模式：按优先级尝试所有可用服务
-                    servicesToTry = ['ip-api', 'ipapi'];
-                    
-                    // 如果有API密钥，添加付费服务
-                    if (settings.ip2locationApiKey) {
-                        servicesToTry.unshift('ip2location'); // 优先使用付费服务
-                    }
-                    if (settings.ipinfoToken) {
-                        servicesToTry.push('ipinfo');
-                    } else {
-                        servicesToTry.push('ipinfo'); // 免费版本
-                    }
-                } else {
-                    // 指定服务模式
-                    const selectedService = currentIpServices[settings.ipLookupService];
-                    if (!selectedService) {
-                        reject(new Error('不支持的IP查询服务'));
-                        return;
-                    }
-                    
-                    // 检查是否需要API密钥
-                    if (selectedService.requiresKey && !settings.ip2locationApiKey) {
-                        reject(new Error('IP2Location服务需要API密钥'));
-                        return;
-                    }
-                    
-                    servicesToTry = [settings.ipLookupService];
-                }
-
-                // 尝试查询当前IP和地理位置
-                for (const serviceName of servicesToTry) {
-                    const service = currentIpServices[serviceName];
-                    if (!service) continue;
-
-                    try {
-                        console.log(`尝试使用 ${service.name} 查询当前IP和地理位置...`);
-                        const result = await queryIpLocation(service, '', settings.ipLookupTimeout);
-                        console.log(`成功从 ${service.name} 获取到当前IP信息:`, result);
-                        
-                        // 直接返回完整结果，包含IP和地理位置信息
-                        resolve({
-                            success: true,
-                            data: {
-                                ip: result.ip,
-                                country: result.country_name,
-                                region: result.region_name,
-                                city: result.city_name,
-                                isp: result.isp
-                            },
-                            service: service.name
-                        });
-                        return;
-                    } catch (error) {
-                        console.error(`${service.name} 查询失败:`, error.message);
-                        continue;
-                    }
-                }
-                
-                reject(new Error('所有IP查询服务都不可用'));
-                return;
-            }
-
-            // 定义所有可用的IP地理位置服务（用于查询指定IP）
-            const allServices = {
-                'ip-api': {
-                    name: 'ip-api',
-                    url: `http://ip-api.com/json/${targetIp}?fields=status,message,country,regionName,city,isp,query`,
-                    parseResponse: (data) => {
-                        const result = JSON.parse(data);
-                        if (result.status === 'success') {
-                            return {
-                                country_name: result.country,
-                                region_name: result.regionName,
-                                city_name: result.city,
-                                isp: result.isp
-                            };
-                        } else {
-                            throw new Error(result.message || '查询失败');
-                        }
-                    }
-                },
-                'ipapi': {
-                    name: 'ipapi',
-                    url: `https://ipapi.co/${targetIp}/json/`,
-                    parseResponse: (data) => {
-                        const result = JSON.parse(data);
-                        if (result.error) {
-                            throw new Error(result.reason || '查询失败');
-                        }
-                        return {
-                            country_name: result.country_name,
-                            region_name: result.region,
-                            city_name: result.city,
-                            isp: result.org
-                        };
-                    }
-                },
-                'ip2location': {
-                    name: 'ip2location',
-                    url: `https://api.ip2location.io/v2/ip?ip=${targetIp}&key=${settings.ip2locationApiKey}&format=json`,
-                    parseResponse: (data) => {
-                        const result = JSON.parse(data);
-                        if (result.error) {
-                            throw new Error(result.error.error_message || '查询失败');
-                        }
-                        return {
-                            country_name: result.country_name,
-                            region_name: result.region_name,
-                            city_name: result.city_name,
-                            isp: result.isp
-                        };
-                    },
-                    requiresKey: true
-                },
-                'ipinfo': {
-                    name: 'ipinfo',
-                    url: settings.ipinfoToken 
-                        ? `https://ipinfo.io/${targetIp}?token=${settings.ipinfoToken}`
-                        : `https://ipinfo.io/${targetIp}/json`,
-                    parseResponse: (data) => {
-                        const result = JSON.parse(data);
-                        if (result.error) {
-                            throw new Error(result.error.message || '查询失败');
-                        }
-                        return {
-                            country_name: result.country,
-                            region_name: result.region,
-                            city_name: result.city,
-                            isp: result.org
-                        };
-                    }
-                }
-            };
-
-            // 根据用户设置选择服务
-            let servicesToTry = [];
-            
-            if (settings.ipLookupService === 'auto') {
-                // 自动模式：按优先级尝试所有可用服务
-                servicesToTry = ['ip-api', 'ipapi'];
-                
-                // 如果有API密钥，添加付费服务
-                if (settings.ip2locationApiKey) {
-                    servicesToTry.unshift('ip2location'); // 优先使用付费服务
-                }
-                if (settings.ipinfoToken) {
-                    servicesToTry.push('ipinfo');
-                } else {
-                    servicesToTry.push('ipinfo'); // 免费版本
-                }
-            } else {
-                // 指定服务模式
-                const selectedService = allServices[settings.ipLookupService];
-                if (!selectedService) {
-                    reject(new Error('不支持的IP查询服务'));
-                    return;
-                }
-                
-                // 检查是否需要API密钥
-                if (selectedService.requiresKey && !settings.ip2locationApiKey) {
-                    reject(new Error('IP2Location服务需要API密钥'));
-                    return;
-                }
-                
-                servicesToTry = [settings.ipLookupService];
-            }
-
-            // 尝试查询服务
-            for (const serviceName of servicesToTry) {
-                const service = allServices[serviceName];
-                if (!service) continue;
-
-                try {
-                    console.log(`尝试使用 ${service.name} 查询IP地理位置...`);
-                    const result = await queryIpLocation(service, targetIp, settings.ipLookupTimeout);
-                    console.log(`成功从 ${service.name} 获取到地理位置信息:`, result);
-                    
-                    resolve({
-                        success: true,
-                        data: {
-                            ip: targetIp,
-                            country: result.country_name,
-                            region: result.region_name,
-                            city: result.city_name,
-                            isp: result.isp
-                        },
-                        service: service.name
-                    });
-                    return;
-                } catch (error) {
-                    console.error(`${service.name} 查询失败:`, error.message);
-                    continue;
-                }
-            }
-            
-            reject(new Error('所有IP地理位置服务都不可用'));
-        } catch (error) {
-            reject(error);
-        }
-    });
-}
-
-/**
- * 辅助函数：查询IP地理位置
- */
-function queryIpLocation(service, ip, timeout = 8000) {
-    return new Promise((resolve, reject) => {
-        const url = new URL(service.url);
-        const options = {
-            hostname: url.hostname,
-            port: url.port || (url.protocol === 'https:' ? 443 : 80),
-            path: url.pathname + url.search,
-            method: 'GET',
-            timeout: timeout * 1000,
-            headers: {
-                'User-Agent': 'MultiSiteLatencyTool/1.0'
-            }
+    try {
+        return await ipLocationService.lookup(ip, userSettings);
+    } catch (error) {
+        console.error('IP地理位置查询处理失败:', error);
+        return {
+            success: false,
+            error: error.message
         };
-
-        const protocol = url.protocol === 'https:' ? https : http;
-        
-        const req = protocol.request(options, (res) => {
-            let data = '';
-            
-            res.on('data', (chunk) => {
-                data += chunk;
-            });
-            
-            res.on('end', () => {
-                try {
-                    const result = service.parseResponse(data);
-                    resolve(result);
-                } catch (error) {
-                    reject(new Error('解析响应失败: ' + error.message));
-                }
-            });
-        });
-
-        req.on('error', (error) => {
-            reject(new Error('请求失败: ' + error.message));
-        });
-
-        req.on('timeout', () => {
-            req.destroy();
-            reject(new Error('请求超时'));
-        });
-
-        req.end();
-    });
+    }
 }
 
 /**
@@ -680,6 +76,23 @@ function queryIpLocation(service, ip, timeout = 8000) {
  */
 async function handleCheckMtrStatus(event) {
     return await toolChecker.checkMtrStatus();
+}
+
+/**
+ * Traceroute 状态检查处理程序
+ */
+async function handleCheckTracerouteStatus(event) {
+    try {
+        return await toolChecker.checkTracerouteStatus();
+    } catch (error) {
+        console.error('检查traceroute状态失败:', error);
+        return {
+            installed: false,
+            status: 'check_error',
+            error: error.message,
+            installInstructions: '检查工具状态时发生错误，请手动安装traceroute工具'
+        };
+    }
 }
 
 /**
@@ -703,6 +116,7 @@ module.exports = {
     handlePingTest,
     handleIp2LocationLookup,
     handleCheckMtrStatus,
+    handleCheckTracerouteStatus,
     handleMtrTest,
     handleTracerouteTest,
     handleHttpTest

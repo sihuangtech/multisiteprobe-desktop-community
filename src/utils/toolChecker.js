@@ -190,24 +190,215 @@ function getInstallInstructions() {
  */
 async function checkTracerouteStatus() {
     try {
-        const checkCmd = process.platform === 'win32' ? 'where tracert' : 'which traceroute';
-        await execAsync(checkCmd);
-        
-        return {
-            installed: true,
-            status: 'ready'
-        };
+        if (process.platform === 'win32') {
+            // Windows 系统使用内置的 tracert，无需检查
+            return {
+                installed: true,
+                status: 'ready',
+                path: 'tracert',
+                tool: 'tracert'
+            };
+        } else if (process.platform === 'darwin') {
+            // macOS 系统使用内置的 traceroute，无需检查
+            return {
+                installed: true,
+                status: 'ready',
+                path: 'traceroute',
+                tool: 'traceroute'
+            };
+        } else {
+            // Linux 系统，需要检查 traceroute 是否安装
+            console.log('Linux 平台，检查 traceroute 工具安装状态...');
+            
+            // 尝试多个可能的 traceroute 命令
+            const tracerouteCommands = ['traceroute', 'tracepath'];
+            let traceroutePath = '';
+            let toolName = '';
+            
+            for (const cmd of tracerouteCommands) {
+                try {
+                    const { stdout } = await execAsync(`which ${cmd}`);
+                    traceroutePath = stdout.trim();
+                    toolName = cmd;
+                    console.log(`找到 ${cmd} 工具:`, traceroutePath);
+                    break;
+                } catch (error) {
+                    console.log(`未找到 ${cmd} 工具`);
+                    continue;
+                }
+            }
+            
+            if (traceroutePath) {
+                // 检查工具是否可执行
+                try {
+                    await execAsync(`${toolName} --help`);
+                    return {
+                        installed: true,
+                        status: 'ready',
+                        path: traceroutePath,
+                        tool: toolName
+                    };
+                } catch (error) {
+                    console.log(`${toolName} 工具存在但无法执行:`, error);
+                    return {
+                        installed: true,
+                        status: 'permission_error',
+                        path: traceroutePath,
+                        tool: toolName,
+                        error: `${toolName} 工具无法执行，可能需要权限`,
+                        installInstructions: await getLinuxTracerouteInstallInstructions()
+                    };
+                }
+            } else {
+                // 未找到任何 traceroute 工具
+                console.log('Linux 系统未安装 traceroute 工具');
+                return {
+                    installed: false,
+                    status: 'not_installed',
+                    error: 'Linux 系统未安装 traceroute 工具',
+                    installInstructions: await getLinuxTracerouteInstallInstructions()
+                };
+            }
+        }
     } catch (error) {
+        console.error('检查 traceroute 状态时发生错误:', error);
         return {
             installed: false,
-            status: 'not_installed',
-            installInstructions: getTracerouteInstallInstructions()
+            status: 'check_error',
+            error: `检查失败: ${error.message}`,
+            installInstructions: await getLinuxTracerouteInstallInstructions()
         };
     }
 }
 
 /**
- * 获取 traceroute 安装说明
+ * 获取 Linux 系统的 traceroute 安装说明
+ * @returns {Promise<string>} 安装说明
+ */
+async function getLinuxTracerouteInstallInstructions() {
+    try {
+        // 检测 Linux 发行版
+        const distro = await detectLinuxDistribution();
+        
+        switch (distro.family) {
+            case 'debian':
+                return `${distro.name} 系统安装命令:\nsudo apt update && sudo apt install traceroute\n\n备选方案:\nsudo apt install iputils-tracepath`;
+                
+            case 'redhat':
+                if (distro.name.includes('fedora')) {
+                    return `${distro.name} 系统安装命令:\nsudo dnf install traceroute\n\n备选方案:\nsudo dnf install iputils`;
+                } else {
+                    return `${distro.name} 系统安装命令:\nsudo yum install traceroute\n\n备选方案:\nsudo yum install iputils`;
+                }
+                
+            case 'arch':
+                return `${distro.name} 系统安装命令:\nsudo pacman -S traceroute\n\n备选方案:\nsudo pacman -S iputils`;
+                
+            case 'suse':
+                return `${distro.name} 系统安装命令:\nsudo zypper install traceroute\n\n备选方案:\nsudo zypper install iputils`;
+                
+            case 'alpine':
+                return `${distro.name} 系统安装命令:\nsudo apk add traceroute\n\n备选方案:\nsudo apk add iputils`;
+                
+            default:
+                return `通用 Linux 安装命令:\n\nUbuntu/Debian: sudo apt install traceroute\nCentOS/RHEL: sudo yum install traceroute\nFedora: sudo dnf install traceroute\nArch Linux: sudo pacman -S traceroute\nopenSUSE: sudo zypper install traceroute\nAlpine: sudo apk add traceroute\n\n备选工具 tracepath 通常已预装在大多数 Linux 发行版中`;
+        }
+    } catch (error) {
+        console.error('检测 Linux 发行版失败:', error);
+        return `通用 Linux 安装命令:\n\nUbuntu/Debian: sudo apt install traceroute\nCentOS/RHEL: sudo yum install traceroute\nFedora: sudo dnf install traceroute\nArch Linux: sudo pacman -S traceroute\nopenSUSE: sudo zypper install traceroute\nAlpine: sudo apk add traceroute\n\n备选工具 tracepath 通常已预装在大多数 Linux 发行版中`;
+    }
+}
+
+/**
+ * 检测 Linux 发行版
+ * @returns {Promise<Object>} 发行版信息
+ */
+async function detectLinuxDistribution() {
+    try {
+        // 尝试读取 /etc/os-release 文件
+        const { stdout } = await execAsync('cat /etc/os-release');
+        const lines = stdout.split('\n');
+        const osInfo = {};
+        
+        lines.forEach(line => {
+            const [key, value] = line.split('=');
+            if (key && value) {
+                osInfo[key] = value.replace(/"/g, '');
+            }
+        });
+        
+        const id = (osInfo.ID || '').toLowerCase();
+        const name = osInfo.PRETTY_NAME || osInfo.NAME || id;
+        
+        // 根据 ID 确定发行版系列
+        let family = 'unknown';
+        
+        if (['ubuntu', 'debian', 'mint', 'elementary', 'pop', 'zorin'].includes(id)) {
+            family = 'debian';
+        } else if (['rhel', 'centos', 'fedora', 'rocky', 'alma', 'oracle'].includes(id)) {
+            family = 'redhat';
+        } else if (['arch', 'manjaro', 'endeavouros', 'garuda'].includes(id)) {
+            family = 'arch';
+        } else if (['opensuse', 'sles', 'sled'].includes(id)) {
+            family = 'suse';
+        } else if (['alpine'].includes(id)) {
+            family = 'alpine';
+        } else if (osInfo.ID_LIKE) {
+            // 检查 ID_LIKE 字段
+            const idLike = osInfo.ID_LIKE.toLowerCase();
+            if (idLike.includes('debian')) {
+                family = 'debian';
+            } else if (idLike.includes('rhel') || idLike.includes('fedora')) {
+                family = 'redhat';
+            } else if (idLike.includes('arch')) {
+                family = 'arch';
+            } else if (idLike.includes('suse')) {
+                family = 'suse';
+            }
+        }
+        
+        return { id, name, family };
+        
+    } catch (error) {
+        console.error('读取 /etc/os-release 失败，尝试其他方法:', error);
+        
+        // 备用方法：检查包管理器
+        try {
+            // 检查是否有 apt
+            await execAsync('which apt');
+            return { id: 'unknown', name: 'Debian-based Linux', family: 'debian' };
+        } catch (e) {
+            try {
+                // 检查是否有 yum
+                await execAsync('which yum');
+                return { id: 'unknown', name: 'RedHat-based Linux', family: 'redhat' };
+            } catch (e2) {
+                try {
+                    // 检查是否有 dnf
+                    await execAsync('which dnf');
+                    return { id: 'unknown', name: 'Fedora-based Linux', family: 'redhat' };
+                } catch (e3) {
+                    try {
+                        // 检查是否有 pacman
+                        await execAsync('which pacman');
+                        return { id: 'unknown', name: 'Arch-based Linux', family: 'arch' };
+                    } catch (e4) {
+                        try {
+                            // 检查是否有 zypper
+                            await execAsync('which zypper');
+                            return { id: 'unknown', name: 'SUSE-based Linux', family: 'suse' };
+                        } catch (e5) {
+                            return { id: 'unknown', name: 'Unknown Linux', family: 'unknown' };
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 获取 traceroute 安装说明（保持向后兼容）
  * @returns {string} 安装说明
  */
 function getTracerouteInstallInstructions() {
@@ -216,7 +407,7 @@ function getTracerouteInstallInstructions() {
     } else if (process.platform === 'win32') {
         return 'tracert 已预装在 Windows 中';
     } else {
-        return 'sudo apt-get install traceroute (Ubuntu/Debian)';
+        return '请使用 checkTracerouteStatus() 获取详细的安装说明';
     }
 }
 

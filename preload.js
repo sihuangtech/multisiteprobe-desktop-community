@@ -31,6 +31,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   getAppVersion: () => appVersion, // 暴露版本号
   getBuildDate: () => buildDate, // 暴露构建日期
+  
+  // 获取系统信息
+  getSystemInfo: () => {
+    return {
+      platform: process.platform,
+      arch: process.arch,
+      nodeVersion: process.version,
+      electronVersion: process.versions.electron
+    }
+  },
 
   // 安全地暴露 ipcRenderer.invoke，只允许特定的通道
   invoke: async (channel, ...args) => {

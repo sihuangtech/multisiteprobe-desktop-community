@@ -1,7 +1,7 @@
 {
   "name": "multi-site-monitor",
   "version": "1.0.0",
-  "description": "A tool for measuring website latency and obtaining IP geolocation information.",
+  "description": "Multi-site Operations Monitoring Tool - Provides IP lookup, Ping, HTTP, DNS, MTR, Traceroute and other network testing and operations monitoring features",
   "homepage": "https://www.skstudio.cn/multisitetool",
   "author": {
     "name": "Snake Konginchrist",

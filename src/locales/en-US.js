@@ -60,7 +60,8 @@ export default {
     fromFavorites: 'From Favorites',
     batchAdd: 'Batch Add',
     clearAll: 'Clear All',
-    favorite: 'Favorite'
+    favorite: 'Favorite',
+    recheckTool: 'Recheck Tool'
   },
   
   // Table column headers
@@ -178,7 +179,13 @@ export default {
     saveFailed: 'Save failed',
     loadFailed: 'Load failed',
     testCompleted: 'Test completed',
-    addedFromPage: 'Added from {page} page'
+    addedFromPage: 'Added from {page} page',
+    ipcRendererUndefined: 'IPC renderer undefined, unable to execute test',
+    toolNotInstalled: '{tool} tool not installed',
+    toolPermissionError: 'Tool permission error',
+    toolReady: '{tool} tool is ready',
+    toolNotReady: '{tool} tool is not ready',
+    checkToolFailed: 'Failed to check tool status'
   },
   
   // Settings page
