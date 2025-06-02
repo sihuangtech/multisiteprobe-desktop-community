@@ -53,7 +53,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'ip2location-lookup',
       'mtr-test',
       'traceroute-test',
-      'check-mtr-status'
+      'check-mtr-status',
+      'check-traceroute-status'
     ];
     if (validChannels.includes(channel)) {
       try {
