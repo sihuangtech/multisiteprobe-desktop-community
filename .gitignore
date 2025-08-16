@@ -116,3 +116,7 @@ userData/
 *.fls
 *.fdb_latexmk
 *.pdf
+
+# Ignore separated sub-projects
+multisiteprobe-ios/
+multisiteprobe-android/
