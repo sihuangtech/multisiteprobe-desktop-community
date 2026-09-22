@@ -10,12 +10,14 @@ A multi-functional network testing tool based on Electron + Vue3 for measuring l
 ## 🚀 Features
 
 ### 🔍 IP/Domain Geolocation Query
+
 - Support batch query of multiple IP addresses or domains
 - Display detailed geolocation information (country, region, city, ISP, etc.)
 - Integrated IP2Location API service
 - Support export query results
 
 ### 🌐 Multiple Network Testing Functions
+
 - **Ping Test**: Measure network latency and packet loss, support custom packet size, timeout, test count
 - **HTTP Test**: Test website response time and status, support GET/POST/HEAD methods
 - **DNS Test**: Test domain resolution performance, support A/AAAA/CNAME/MX record queries
@@ -23,12 +25,14 @@ A multi-functional network testing tool based on Electron + Vue3 for measuring l
 - **Traceroute**: Show the routing path of data packets
 
 ### ⭐ Favorites Function
+
 - Local persistent storage of favorite records
 - Support add, edit, delete favorites
 - Support notes and search functionality
 - One-click launch various network tests
 
 ### 🎨 User Interface
+
 - Modern graphical interface design
 - Based on Element Plus component library
 - Responsive layout, support multiple screen sizes
@@ -44,12 +48,14 @@ A multi-functional network testing tool based on Electron + Vue3 for measuring l
 ## 🛠 Installation
 
 ### 1. Clone the project
+
 ```bash
 git clone https://gitee.com/Snake-Konginchrist/MultiSiteLatencyTool.git
 cd MultiSiteLatencyTool
 ```
 
 ### 2. Install dependencies
+
 ```bash
 npm install
 ```
@@ -59,6 +65,7 @@ npm install
 > - You may see warnings about optional dependencies during installation, these can usually be ignored
 
 ### 3. Configure environment variables
+
 Create a `.env` file and configure API key:
 ```bash
 # IP2Location API Configuration
@@ -82,18 +89,21 @@ CSC_IDENTITY_AUTO_DISCOVERY=false
 ## 🚀 Usage
 
 ### Development Mode
+
 ```bash
 npm run electron:dev
 ```
 Start development server and Electron app with hot reload
 
 ### Preview Production Version
+
 ```bash
 npm run electron:preview
 ```
 Build and preview production version
 
 ### Build Application
+
 ```bash
 # Build for all platforms
 npm run electron:build
@@ -139,42 +149,49 @@ npm run dist:linux:unsigned # Linux unsigned build
 ## 📖 Feature Usage Guide
 
 ### IP/Domain Query
+
 1. Enter IP addresses or domains in the input box on the homepage (one per line)
 2. Click "Start Query" button
 3. View detailed geolocation information
 4. Add frequently used addresses to favorites
 
 ### Ping Test
+
 1. Switch to "Ping Test" page
 2. Enter host addresses to test
 3. Configure test parameters (packet size, timeout, test count)
 4. Click "Start Test" to view results
 
 ### HTTP Test
+
 1. Switch to "HTTP Test" page
 2. Enter URLs to test
 3. Select HTTP method (GET/POST/HEAD)
 4. Click "Start Test" to view response time and status
 
 ### DNS Test
+
 1. Switch to "DNS Test" page
 2. Enter domains to query
 3. Select record type (A/AAAA/CNAME/MX)
 4. Click "Start Test" to view resolution results
 
 ### MTR Test
+
 1. Switch to "MTR Test" page
 2. Enter target host
 3. Configure test count
 4. View detailed path analysis results
 
 ### Traceroute
+
 1. Switch to "Traceroute" page
 2. Enter target host
 3. Configure maximum hops
 4. View complete routing path
 
 ### Favorites Management
+
 1. Switch to "Favorites" page
 2. Add new favorite items
 3. Edit or delete existing favorites
@@ -230,12 +247,14 @@ MultiSiteLatencyTool/
 ## 🔧 Development Guide
 
 ### Adding New Features
+
 1. Create new Vue components in `src/views/` directory
 2. Add route configuration in `src/router/index.js`
 3. Add navigation menu items in `src/App.vue`
 4. Add corresponding services in `src/services/` if needed
 
 ### Debugging Tips
+
 - Use keyboard shortcuts to open developer tools
 - Check console output to understand application status
 - Use Vue DevTools to debug Vue components

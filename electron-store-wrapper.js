@@ -4,8 +4,10 @@
 let Store;
 
 try {
-  // 尝试使用 CommonJS 方式加载
-  Store = require('electron-store');
+  // electron-store >= 11 为纯 ESM 包，Node 22+ 的 require(esm) 会返回命名空间对象，
+  // 需要取出 default 导出才是 Store 类
+  const mod = require('electron-store');
+  Store = (mod && mod.default) ? mod.default : mod;
 } catch (e) {
   console.error('Failed to load electron-store:', e);
   // 提供一个简单的后备实现
