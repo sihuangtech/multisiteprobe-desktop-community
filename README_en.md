@@ -5,7 +5,7 @@ A multi-functional network testing tool based on Electron + Vue3 for measuring l
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5-green.svg)
-![Electron](https://img.shields.io/badge/Electron-36.3-blue.svg)
+![Electron](https://img.shields.io/badge/Electron-44.4-blue.svg)
 
 ## 🚀 Features
 
@@ -41,7 +41,7 @@ A multi-functional network testing tool based on Electron + Vue3 for measuring l
 ## 📋 System Requirements
 
 - **Operating System**: Windows 10+, macOS 10.14+, Ubuntu 18.04+
-- **Node.js**: 16.0+
+- **Node.js**: 20.19+ (or 22.12+)
 - **Memory**: Minimum 512MB RAM
 - **Disk Space**: Minimum 200MB available space
 
@@ -213,12 +213,12 @@ npm run dist:linux:unsigned # Linux unsigned build
 ## 🏗 Tech Stack
 
 - **Frontend Framework**: Vue 3.5 + Composition API
-- **UI Component Library**: Element Plus 2.9
-- **Router Management**: Vue Router 4.5
-- **Desktop Framework**: Electron 36.3
-- **Build Tool**: Vite 6.3
-- **HTTP Client**: Axios 1.9
-- **Data Storage**: electron-store 10.0
+- **UI Component Library**: Element Plus 2.14
+- **Router Management**: Vue Router 5.3
+- **Desktop Framework**: Electron 44.4
+- **Build Tool**: Vite 8.3
+- **HTTP Client**: Axios 1.20
+- **Data Storage**: electron-store 11.0
 
 ## 📁 Project Structure
 

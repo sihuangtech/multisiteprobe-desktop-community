@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 ![Vue](https://img.shields.io/badge/Vue-3.5-green.svg)
-![Electron](https://img.shields.io/badge/Electron-36.3-blue.svg)
+![Electron](https://img.shields.io/badge/Electron-44.4-blue.svg)
 
 ## 🚀 功能特性
 
@@ -41,7 +41,7 @@
 ## 📋 系统要求
 
 - **操作系统**: Windows 10+, macOS 10.14+, Ubuntu 18.04+
-- **Node.js**: 16.0+
+- **Node.js**: 20.19+（或 22.12+）
 - **内存**: 最少 512MB RAM
 - **磁盘空间**: 最少 200MB 可用空间
 
@@ -210,12 +210,12 @@ npm run dist:linux:unsigned # Linux 不签名构建
 ## 🏗 技术栈
 
 - **前端框架**: Vue 3.5 + Composition API
-- **UI组件库**: Element Plus 2.9
-- **路由管理**: Vue Router 4.5
-- **桌面框架**: Electron 36.3
-- **构建工具**: Vite 6.3
-- **HTTP客户端**: Axios 1.9
-- **数据存储**: electron-store 10.0
+- **UI组件库**: Element Plus 2.14
+- **路由管理**: Vue Router 5.3
+- **桌面框架**: Electron 44.4
+- **构建工具**: Vite 8.3
+- **HTTP客户端**: Axios 1.20
+- **数据存储**: electron-store 11.0
 
 ## 📁 项目结构
 
