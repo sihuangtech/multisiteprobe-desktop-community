@@ -60,13 +60,15 @@ cd MultiSiteLatencyTool
 npm install
 ```
 
-> 💡 **Development Notes**: 
+> 💡 **Development Notes**:
+>
 > - The project ignores `package-lock.json` file by default, it will not be tracked by Git
 > - You may see warnings about optional dependencies during installation, these can usually be ignored
 
 ### 3. Configure environment variables
 
 Create a `.env` file and configure API key:
+
 ```bash
 # IP2Location API Configuration
 IP2LOCATION_API_KEY=your_api_key_here
@@ -81,9 +83,9 @@ CSC_IDENTITY_AUTO_DISCOVERY=false
 ```
 
 > 💡 **Get API Key**: Please visit [IP2Location](https://www.ip2location.com/) to register an account and get a free API key
-> 
+>
 > 📋 **Environment Variables**: You can copy `.env.example` file to `.env` and modify the configurations
-> 
+>
 > 🔐 **Code Signing**: By default, your developer certificate will be used. To disable signing, add `CSC_IDENTITY_AUTO_DISCOVERY=false` to `.env`
 
 ## 🚀 Usage
@@ -93,6 +95,7 @@ CSC_IDENTITY_AUTO_DISCOVERY=false
 ```bash
 npm run electron:dev
 ```
+
 Start development server and Electron app with hot reload
 
 ### Preview Production Version
@@ -100,6 +103,7 @@ Start development server and Electron app with hot reload
 ```bash
 npm run electron:preview
 ```
+
 Build and preview production version
 
 ### Build Application
@@ -136,12 +140,14 @@ npm run dist:linux:unsigned # Linux unsigned build
 ```
 
 > 💡 **About Code Signing**：
+>
 > - **Default builds**: Will use your developer certificate for signing, showing developer information
 > - **Unsigned builds**: Use `unsigned` versions, no developer information shown, suitable for development testing
 > - **macOS**: Signed apps provide better user experience with fewer security warnings
 > - **Windows**: Signed apps avoid SmartScreen warnings and increase user trust
 >
 > 💡 **About Windows Installer**：
+>
 > - The project uses NSIS to create custom installers that allow users to choose installation location
 > - Uninstallation will thoroughly clean up application data to avoid residual files
 > - Supports x64, ia32, and ARM64 architectures
@@ -216,7 +222,7 @@ npm run dist:linux:unsigned # Linux unsigned build
 
 ## 📁 Project Structure
 
-```
+```text
 MultiSiteLatencyTool/
 ├── src/
 │   ├── components/          # Vue components
